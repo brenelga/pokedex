@@ -1,38 +1,61 @@
-# pokedex
+# Pokedex PWA with Battle System
 
-This template should help get you started developing with Vue 3 in Vite.
+A Progressive Web Application (PWA) built with Vue 3 and Node.js/Express. Features Pokemon browsing, favorites, team building, and a real-time (polling) battle system against friends.
 
-## Recommended IDE Setup
+## Features
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+-   **Authentication**: Register and Login (JWT).
+-   **Pokedex**: Browse, Search, filter Pokemon. Detailed views with stats and evolution chain using functionality from [PokeAPI](https://pokeapi.co/).
+-   **Favorites**: Save your favorite Pokemon.
+-   **Team Builder**: Create multiple teams of up to 6 Pokemon.
+-   **Social**: Add friends via Friend Code.
+-   **Battles**: Challenge friends to battles. Turn-based system.
+-   **PWA**: Installable on mobile/desktop, offline supported (caching).
 
-## Recommended Browser Setup
+## Prerequisites
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+-   Node.js (v16+)
+-   npm
 
-## Customize configuration
+## Installation
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+1.  Clone the repository.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-## Project Setup
+## Running the App
 
-```sh
-npm install
+You need to run both the Backend and Frontend.
+
+### 1. Start the Backend Server
+This runs the Node.js/Express server on port 3000.
+```bash
+node server/index.js
 ```
 
-### Compile and Hot-Reload for Development
-
-```sh
+### 2. Start the Frontend (Vite)
+Open a new terminal:
+```bash
 npm run dev
 ```
 
-### Compile and Minify for Production
+Visit `http://localhost:5173` in your browser.
 
-```sh
+## Deployment
+
+To build the PWA for production:
+```bash
 npm run build
+npm run preview
 ```
+
+## Structure
+
+-   `server/`: Node.js Backend
+    -   `data/`: JSON file storage for Users and Battles.
+-   `src/`: Vue 3 Frontend
+    -   `views/`: Page components.
+    -   `stores/`: Pinia state management.
+    -   `services/`: API wrappers.

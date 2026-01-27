@@ -1,80 +1,142 @@
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <header class="bg-red-600 border-b-8 border-black p-6 shadow-xl">
-      <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 class="text-white text-3xl font-black tracking-tighter uppercase flex items-center gap-2">
-          <div class="w-8 h-8 bg-white rounded-full border-4 border-black relative">
-            <div class="absolute inset-1 border-2 border-black rounded-full"></div>
-          </div>
-          Pokédex MX
-        </h1>
-        
-        <div class="relative w-full md:w-96">
-          <input 
-            v-model="filters.name"
-            type="text" 
-            placeholder="Buscar Pokémon" 
-            class="w-full px-4 py-2 rounded-full border-2 border-black focus:outline-none focus:ring-4 focus:ring-red-300"
-          />
-        </div>
-      </div>
-    </header>
+  <div class="home">
+    <div class="filters">
+      <input v-model="searchQuery" placeholder="Search Pokemon..." @input="handleSearch" />
+      <!-- Add Type filter dropdown later -->
+    </div>
 
-    <nav class="bg-black text-white p-4 sticky top-0 z-10 shadow-lg">
-      <div class="max-w-7xl mx-auto flex flex-wrap gap-4 justify-center">
-        <select v-model="filters.type1" class="bg-gray-800 border border-gray-600 rounded px-3 py-1 text-sm">
-          <option value="">Tipo 1</option>
-          <option v-for="type in types" :key="type" :value="type">{{ type }}</option>
-        </select>
+    <div v-if="loading" class="loading">Loading...</div>
 
-        <select v-model="filters.type2" class="bg-gray-800 border border-gray-600 rounded px-3 py-1 text-sm">
-          <option value="">Tipo 2</option>
-          <option v-for="type in types" :key="type" :value="type">{{ type }}</option>
-        </select>
-
-        <select v-model="filters.region" class="bg-gray-800 border border-gray-600 rounded px-3 py-1 text-sm">
-          <option value="">Todas las Regiones</option>
-          <option value="kanto">Kanto</option>
-          <option value="johto">Johto</option>
-          <option value="hoenn">Hoenn</option>
-          <option value="sinnoh">Sinnoh</option>
-          <option value="unova">Unova</option>
-          <option value="kalos">Kalos</option>
-          <option value="alola">Alola</option>
-          <option value="galar">Galar</option>
-        </select>
-
-        <button @click="applyFilters" class="bg-red-600 hover:bg-red-500 px-4 py-1 rounded font-bold transition">
-          Filtrar
-        </button>
-      </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto p-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        <div v-for="p in pokemonList" :key="p.id" 
-          class="bg-white border-4 border-black rounded-2xl overflow-hidden hover:transform hover:-translate-y-2 transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-          <div class="bg-red-50 p-4 flex justify-center border-b-4 border-black relative">
-            <span class="absolute top-2 left-2 font-black text-black opacity-20 text-2xl">#{{ p.id }}</span>
-            <img :src="p.image" :alt="p.name" class="w-32 h-32 object-contain" />
-          </div>
-          <div class="p-4 text-center">
-            <h2 class="text-xl font-black uppercase text-gray-800">{{ p.name }}</h2>
-            <div class="flex justify-center gap-2 mt-2">
-              <span v-for="t in p.types" :key="t" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase border-2 border-black bg-white">
-                {{ t }}
-              </span>
-            </div>
-            <button class="mt-4 w-full bg-black text-white py-2 rounded-lg font-bold hover:bg-gray-800 transition">
-              Ver Detalles
-            </button>
-          </div>
-        </div>
-      </div>
-    </main>
+    <div class="pokemon-grid" v-else>
+      <PokemonCard 
+        v-for="p in displayPokemon" 
+        :key="p.name" 
+        :pokemon="p"
+        :isFavorite="isFavorite(p)"
+        @toggle-favorite="updateFavorites"
+      />
+    </div>
+    
+    <div class="load-more" v-if="!searchQuery && !loading">
+        <button @click="loadMore">Load More</button>
+    </div>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted, computed } from 'vue';
+import { pokeApi, userApi } from '../services/api';
+import PokemonCard from '../components/PokemonCard.vue';
 
+const allPokemon = ref([]); // List of { name, url }
+const displayedList = ref([]);
+const favorites = ref([]);
+const loading = ref(false);
+const offset = ref(0);
+const limit = 50;
+const searchQuery = ref('');
+
+const loadPokemon = async () => {
+    loading.value = true;
+    try {
+        const data = await pokeApi.getPokemonList(limit, offset.value);
+        allPokemon.value = [...allPokemon.value, ...data.results];
+        offset.value += limit;
+    } catch (e) {
+        console.error(e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const loadFavorites = async () => {
+    try {
+        const res = await userApi.getFavorites();
+        favorites.value = res.data;
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+const updateFavorites = (id) => {
+    if (favorites.value.includes(id)) {
+        favorites.value = favorites.value.filter(fid => fid !== id);
+    } else {
+        favorites.value.push(id);
+    }
+};
+
+const isFavorite = (pokemon) => {
+    const id = Number(pokemon.url ? pokemon.url.split('/')[pokemon.url.split('/').length - 2] : pokemon.id);
+    return favorites.value.includes(id);
+};
+
+const displayPokemon = computed(() => {
+    if (searchQuery.value) {
+        return allPokemon.value.filter(p => p.name.includes(searchQuery.value.toLowerCase()));
+    }
+    return allPokemon.value;
+});
+
+const handleSearch = () => {
+    // If we want detailed search we might need to search API
+    // For now client side filtering of loaded pokemon
+};
+
+const loadMore = () => {
+    loadPokemon();
+};
+
+onMounted(() => {
+    loadPokemon();
+    loadFavorites();
+});
 </script>
+
+<style scoped>
+.home {
+  padding: 20px 0;
+}
+
+.filters {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.filters input {
+  padding: 10px;
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 1rem;
+}
+
+.pokemon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 20px;
+}
+
+.load-more {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.load-more button {
+    padding: 10px 30px;
+    background: #ef5350;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.loading {
+    text-align: center;
+    font-size: 1.2rem;
+    color: #666;
+}
+</style>
