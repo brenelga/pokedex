@@ -7,7 +7,7 @@
       <span class="number">#{{ pokemonId }}</span>
       <h3>{{ capitalize(pokemon.name) }}</h3>
       <div class="actions">
-        <button @click.stop="toggleFavorite" :class="{ active: isFavorite }" title="Add to Favorites">
+        <button @click.stop="toggleFavorite" :class="{ active: isFavorite }" title="Agregar a Favoritos">
           ❤️
         </button>
       </div>

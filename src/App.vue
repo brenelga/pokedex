@@ -22,15 +22,15 @@ const logout = () => {
       <nav>
         <div class="logo">PokéApp</div>
         <div class="links">
-          <RouterLink to="/">Home</RouterLink>
-          <RouterLink to="/favorites">Favorites</RouterLink>
-          <RouterLink to="/teams">Teams</RouterLink>
-          <RouterLink to="/battle">Battle</RouterLink>
+          <RouterLink to="/">Inicio</RouterLink>
+          <RouterLink to="/favorites">Favoritos</RouterLink>
+          <RouterLink to="/teams">Equipos</RouterLink>
+          <RouterLink to="/battle">Batalla</RouterLink>
         </div>
         <div class="user-actions">
-           <span class="username">{{ user ? user.name : 'User' }}</span>
-           <span v-if="user" class="friend-code">Code: {{ user.friendCode }}</span>
-           <button @click="logout" class="logout-btn">Logout</button>
+           <span class="username">{{ user ? user.name : 'Usuario' }}</span>
+           <span v-if="user" class="friend-code">Código: {{ user.friendCode }}</span>
+           <button @click="logout" class="logout-btn">Cerrar Sesión</button>
         </div>
       </nav>
     </div>

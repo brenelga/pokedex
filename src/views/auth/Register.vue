@@ -1,22 +1,22 @@
 <template>
   <div class="auth-container">
-    <h2>Register</h2>
+    <h2>Registrarse</h2>
     <form @submit.prevent="handleRegister">
       <div class="form-group">
-        <label>Name</label>
+        <label>Nombre</label>
         <input type="text" v-model="name" required />
       </div>
       <div class="form-group">
-        <label>Email</label>
+        <label>Correo</label>
         <input type="email" v-model="email" required />
       </div>
       <div class="form-group">
-        <label>Password</label>
+        <label>Contraseña</label>
         <input type="password" v-model="password" required />
       </div>
-      <button type="submit">Register</button>
+      <button type="submit">Registrarse</button>
     </form>
-    <p>Already have an account? <router-link to="/login">Login</router-link></p>
+    <p>¿Ya tienes cuenta? <router-link to="/login">Iniciar Sesión</router-link></p>
   </div>
 </template>
 
@@ -36,7 +36,7 @@ const handleRegister = async () => {
   if (success) {
     router.push('/');
   } else {
-    alert('Registration failed');
+    alert('Registro fallido');
   }
 };
 </script>

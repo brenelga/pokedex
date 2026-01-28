@@ -1,8 +1,8 @@
 <template>
   <div class="teams-container">
     <div class="header-actions">
-      <h2>My Teams</h2>
-      <button @click="startNewTeam" v-if="!isEditing">+ New Team</button>
+      <h2>Mis Equipos</h2>
+      <button @click="startNewTeam" v-if="!isEditing">+ Nuevo Equipo</button>
     </div>
 
     <!-- LIST MODE -->
@@ -17,16 +17,16 @@
                 <button @click="deleteTeam(team.id)">Delete</button>
             </div>
         </div>
-        <p v-if="teams.length === 0">No teams created yet.</p>
+        <p v-if="teams.length === 0">No se han creado equipos aún.</p>
     </div>
 
     <!-- EDIT MODE -->
     <div v-else class="team-editor">
         <div class="editor-header">
-            <input v-model="currentTeam.name" placeholder="Team Name" class="team-name-input" />
+            <input v-model="currentTeam.name" placeholder="Nombre del Equipo" class="team-name-input" />
             <div class="editor-actions">
-                <button @click="saveTeam" :disabled="!isValidTeam">Save</button>
-                <button @click="cancelEdit" class="secondary">Cancel</button>
+                <button @click="saveTeam" :disabled="!isValidTeam">Guardar</button>
+                <button @click="cancelEdit" class="secondary">Cancelar</button>
             </div>
         </div>
 
@@ -37,20 +37,20 @@
                 <button @click="removeMember(index)" class="remove-btn">x</button>
             </div>
             <div v-for="n in (6 - currentTeam.members.length)" :key="'empty'+n" class="member-slot empty">
-                <span>Empty Slot</span>
+                <span>Espacio Vacío</span>
             </div>
         </div>
 
         <div class="add-pokemon">
-            <h4>Add Pokemon</h4>
+            <h4>Agregar Pokemon</h4>
             <div class="search-box">
-                <input v-model="searchQuery" @keyup.enter="searchPokemon" placeholder="Enter Pokemon Name or ID" />
-                <button @click="searchPokemon">Search</button>
+                <input v-model="searchQuery" @keyup.enter="searchPokemon" placeholder="Ingresa Nombre o ID de Pokemon" />
+                <button @click="searchPokemon">Buscar</button>
             </div>
             <div v-if="searchResult" class="search-result">
                 <img :src="searchResult.sprites.front_default" alt="">
                 <span>{{ searchResult.name }}</span>
-                <button @click="addMember">Add to Team</button>
+                <button @click="addMember">Agregar a Equipo</button>
             </div>
         </div>
     </div>
@@ -110,7 +110,7 @@ const searchPokemon = async () => {
         const data = await pokeApi.getPokemonDetails(searchQuery.value.toLowerCase());
         searchResult.value = data;
     } catch (e) {
-        alert('Pokemon not found');
+        alert('Pokemon no encontrado');
         searchResult.value = null;
     }
 };
@@ -118,7 +118,7 @@ const searchPokemon = async () => {
 const addMember = () => {
     if (!searchResult.value) return;
     if (currentTeam.value.members.length >= 6) {
-        alert('Team is full (max 6)');
+        alert('El equipo está lleno (max 6)');
         return;
     }
     

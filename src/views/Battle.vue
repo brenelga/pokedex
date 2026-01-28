@@ -2,48 +2,48 @@
   <div class="battle-container">
     <!-- FRIENDS SECTION -->
     <div class="section friends-section">
-        <h3>Friends</h3>
+        <h3>Amigos</h3>
         <div class="add-friend">
-            <input v-model="friendCode" placeholder="Enter Friend Code" />
-            <button @click="addFriend">Add Friend</button>
+            <input v-model="friendCode" placeholder="Ingresa código de amigo" />
+            <button @click="addFriend">Agregar Amigo</button>
         </div>
         <div class="friends-list">
             <div v-for="friend in friends" :key="friend.id" class="friend-item">
                 <span class="friend-name">{{ friend.name }}</span>
-                <button @click="selectOpponent(friend)" class="challenge-btn">Challenge</button>
+                <button @click="selectOpponent(friend)" class="challenge-btn">Desafiar</button>
             </div>
-            <p v-if="friends.length === 0">No friends yet.</p>
+            <p v-if="friends.length === 0">Aún no tienes amigos.</p>
         </div>
     </div>
 
     <!-- BATTLES LIST -->
     <div class="section battles-section">
-        <h3>Active Battles</h3>
+        <h3>Batallas Activas</h3>
         <div class="battle-list">
             <div v-for="battle in battles" :key="battle.id" class="battle-item" :class="{ active: currentBattle?.id === battle.id }" @click="openBattle(battle)">
                 <span>vs {{ getOpponentName(battle) }}</span>
                 <span class="status">{{ battle.status }}</span>
             </div>
-             <p v-if="battles.length === 0">No active battles.</p>
+             <p v-if="battles.length === 0">No hay batallas activas.</p>
         </div>
     </div>
 
     <!-- BATTLE INTERFACE -->
     <div v-if="currentBattle" class="battle-arena">
         <div class="arena-header">
-            <h3>Battle vs {{ getOpponentName(currentBattle) }}</h3>
-            <button @click="closeBattle">Close</button>
+            <h3>Batalla vs {{ getOpponentName(currentBattle) }}</h3>
+            <button @click="closeBattle">Cerrar</button>
         </div>
         
         <div v-if="currentBattle.status === 'waiting_for_opponent'" class="waiting">
             <p v-if="currentBattle.player2 === userId">
-                You have been challenged! Select a team to join.
+                ¡Has sido desafiado! Selecciona un equipo para unirte.
                 <select v-model="selectedTeamId">
                     <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
                 </select>
-                <button @click="joinBattle" :disabled="!selectedTeamId">Join Battle</button>
+                <button @click="joinBattle" :disabled="!selectedTeamId">Unirse a Batalla</button>
             </p>
-            <p v-else>Waiting for opponent to join...</p>
+            <p v-else>Esperando a que el oponente se una...</p>
         </div>
 
         <div v-else-if="currentBattle.status === 'active'" class="active-battle">
@@ -52,15 +52,15 @@
             </div>
             
             <div class="controls" v-if="isMyTurn">
-                <h4>Your Turn!</h4>
+                <h4>¡Tu Turno!</h4>
                 <div class="moves">
-                    <button @click="makeMove('Attack')">Attack</button>
-                    <button @click="makeMove('Defend')">Defend</button>
-                    <button @click="makeMove('Special')">Special</button>
+                    <button @click="makeMove('Attack')">Atacar</button>
+                    <button @click="makeMove('Defend')">Defender</button>
+                    <button @click="makeMove('Special')">Especial</button>
                 </div>
             </div>
             <div v-else class="waiting-turn">
-                Waiting for opponent...
+                Esperando al oponente...
             </div>
         </div>
     </div>
@@ -68,13 +68,13 @@
     <!-- MODAL TO SELECT TEAM FOR NEW BATTLE -->
     <div v-if="showTeamSelect" class="modal">
         <div class="modal-content">
-            <h3>Select Team to Battle {{ selectedFriend?.name }}</h3>
+            <h3>Seleccionar equipo para batalla con {{ selectedFriend?.name }}</h3>
             <select v-model="selectedTeamId">
                 <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
             <div class="modal-actions">
-                <button @click="createBattle" :disabled="!selectedTeamId">Start Battle</button>
-                <button @click="showTeamSelect = false">Cancel</button>
+                <button @click="createBattle" :disabled="!selectedTeamId">Iniciar Batalla</button>
+                <button @click="showTeamSelect = false">Cancelar</button>
             </div>
         </div>
     </div>
@@ -128,7 +128,7 @@ const addFriend = async () => {
         friendCode.value = '';
         loadData();
     } catch (e) {
-        alert(e.response?.data?.error || 'Error adding friend');
+        alert(e.response?.data?.error || 'Error al agregar amigo');
     }
 };
 
@@ -176,10 +176,10 @@ const makeMove = async (move) => {
 const getOpponentName = (battle) => {
     if (battle.player1 === userId.value) {
         const f = friends.value.find(f => f.id === battle.player2);
-        return f ? f.name : 'Opponent';
+        return f ? f.name : 'Oponente';
     } else {
          const f = friends.value.find(f => f.id === battle.player1);
-        return f ? f.name : 'Opponent';
+        return f ? f.name : 'Oponente';
     }
 };
 

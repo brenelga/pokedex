@@ -1,18 +1,18 @@
 <template>
   <div class="auth-container">
-    <h2>Login</h2>
+    <h2>Iniciar Sesión</h2>
     <form @submit.prevent="handleLogin">
       <div class="form-group">
-        <label>Email</label>
+        <label>Correo</label>
         <input type="email" v-model="email" required />
       </div>
       <div class="form-group">
-        <label>Password</label>
+        <label>Contraseña</label>
         <input type="password" v-model="password" required />
       </div>
-      <button type="submit">Login</button>
+      <button type="submit">Iniciar Sesión</button>
     </form>
-    <p>Don't have an account? <router-link to="/register">Register</router-link></p>
+    <p>¿No tienes cuenta? <router-link to="/register">Registrarse</router-link></p>
   </div>
 </template>
 
@@ -31,7 +31,7 @@ const handleLogin = async () => {
   if (success) {
     router.push('/');
   } else {
-    alert('Login failed');
+    alert('Error al iniciar sesión');
   }
 };
 </script>

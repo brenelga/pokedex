@@ -1,8 +1,8 @@
 <template>
   <div class="favorites">
-    <h2>My Favorites</h2>
-    <div v-if="loading" class="loading">Loading...</div>
-    <div v-else-if="favoritesData.length === 0" class="empty">No favorites yet!</div>
+    <h2>Mis Favoritos</h2>
+    <div v-if="loading" class="loading">Cargando...</div>
+    <div v-else-if="favoritesData.length === 0" class="empty">¡Aún no hay favoritos!</div>
     <div class="pokemon-grid" v-else>
       <PokemonCard 
         v-for="p in favoritesData" 

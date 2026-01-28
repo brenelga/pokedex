@@ -1,10 +1,10 @@
 <template>
   <div class="home">
     <div class="filters">
-      <input v-model="filterParams.search" placeholder="Search Pokemon..." @input="handleFilterChange('search')" />
+      <input v-model="filterParams.search" placeholder="Buscar Pokémon..." @input="handleFilterChange('search')" />
       
       <select v-model="filterParams.region" @change="handleFilterChange('region')">
-        <option value="">All Regions</option>
+        <option value="">Todas las Regiones</option>
         <option value="1">Kanto</option>
         <option value="2">Johto</option>
         <option value="3">Hoenn</option>
@@ -16,7 +16,7 @@
       </select>
 
       <select v-model="filterParams.generation" @change="handleFilterChange('generation')">
-        <option value="">All Generations</option>
+        <option value="">Todas las Generaciones</option>
         <option value="1">Gen 1</option>
         <option value="2">Gen 2</option>
         <option value="3">Gen 3</option>
@@ -28,17 +28,17 @@
       </select>
 
       <select v-model="filterParams.type1" @change="handleFilterChange('type1')">
-        <option value="">Type 1</option>
+        <option value="">Tipo 1</option>
         <option v-for="type in types" :key="type" :value="type">{{ type }}</option>
       </select>
 
       <select v-model="filterParams.type2" @change="handleFilterChange('type2')">
-        <option value="">Type 2</option>
+        <option value="">Tipo 2</option>
         <option v-for="type in types" :key="type" :value="type">{{ type }}</option>
       </select>
     </div>
 
-    <div v-if="pokemonStore.loading" class="loading">Loading...</div>
+    <div v-if="pokemonStore.loading" class="loading">Cargando...</div>
 
     <div class="pokemon-grid" v-else>
       <PokemonCard 
@@ -51,7 +51,7 @@
     </div>
     
     <div class="load-more" v-if="pokemonStore.displayPokemon.length === 0 && !pokemonStore.loading">
-        No Pokemon found.
+        No se encontraron Pokémon.
     </div>
   </div>
 </template>

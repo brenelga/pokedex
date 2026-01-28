@@ -15,7 +15,7 @@
         </div>
 
         <div class="stats">
-            <h3>Base Stats</h3>
+            <h3>Estadísticas Base</h3>
             <div v-for="stat in pokemon.stats" :key="stat.stat.name" class="stat-row">
                 <span class="stat-name">{{ formatStat(stat.stat.name) }}</span>
                 <div class="stat-bar-container">
@@ -27,7 +27,7 @@
     </div>
 
     <div class="evolution-chain" v-if="evolutionChain.length">
-        <h3>Evolution Chain</h3>
+        <h3>Cadena Evolutiva</h3>
         <div class="evo-row">
             <div v-for="evo in evolutionChain" :key="evo.species_name" class="evo-item" @click="goToPokemon(evo.species_name)">
                 <img :src="getImage(evo.id)" :alt="evo.species_name">
@@ -36,7 +36,7 @@
         </div>
     </div>
   </div>
-  <div v-else class="loading">Loading...</div>
+  <div v-else class="loading">Cargando...</div>
 </template>
 
 <script setup>
