@@ -6,6 +6,47 @@
     "name": "Brenel",
     "friendCode": "EB8DA1",
     "favorites": [],
+    "teams": [
+      {
+        "name": "My Team",
+        "members": [
+          {
+            "id": 497,
+            "name": "serperior",
+            "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/497.png"
+          },
+          {
+            "id": 644,
+            "name": "zekrom",
+            "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/644.png"
+          },
+          {
+            "id": 157,
+            "name": "typhlosion",
+            "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/157.png"
+          },
+          {
+            "id": 395,
+            "name": "empoleon",
+            "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/395.png"
+          }
+        ],
+        "id": "1769608710311"
+      }
+    ],
+    "friends": []
+  },
+  {
+    "id": "1769609063956",
+    "email": "test_1769609063620@example.com",
+    "password": "$2b$10$E9XSAs7fssnJ12PohEz3M.5eD/LdcywUmYcf51EcOqfsQe3RYCkzS",
+    "name": "test_1769609063620",
+    "friendCode": "CD46B4",
+    "favorites": [
+      1,
+      2,
+      3
+    ],
     "teams": [],
     "friends": []
   }

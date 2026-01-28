@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { db } from './db.js';
 import { CONFIG } from './config.js';
 import crypto from 'crypto';
+import cache from './cache.js';
 
 const app = express();
 
@@ -87,8 +88,18 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 
 // Favorites
 app.get('/api/user/favorites', authenticateToken, (req, res) => {
+    const cacheKey = `favorites_${req.user.id}`;
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+        return res.json(cachedData);
+    }
+
     const user = db.findOne('users', u => u.id === req.user.id);
-    res.json(user.favorites || []);
+    const favorites = user.favorites || [];
+
+    cache.set(cacheKey, favorites);
+    res.json(favorites);
 });
 
 app.post('/api/user/favorites', authenticateToken, (req, res) => {
@@ -103,13 +114,27 @@ app.post('/api/user/favorites', authenticateToken, (req, res) => {
     }
 
     db.update('users', u => u.id === req.user.id, { favorites });
+
+    // Invalidate cache
+    cache.del(`favorites_${req.user.id}`);
+
     res.json(favorites);
 });
 
 // Teams
 app.get('/api/user/teams', authenticateToken, (req, res) => {
+    const cacheKey = `teams_${req.user.id}`;
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+        return res.json(cachedData);
+    }
+
     const user = db.findOne('users', u => u.id === req.user.id);
-    res.json(user.teams || []);
+    const teams = user.teams || [];
+
+    cache.set(cacheKey, teams);
+    res.json(teams);
 });
 
 app.post('/api/user/teams', authenticateToken, (req, res) => {
@@ -129,6 +154,10 @@ app.post('/api/user/teams', authenticateToken, (req, res) => {
     }
 
     db.update('users', u => u.id === req.user.id, { teams });
+
+    // Invalidate cache
+    cache.del(`teams_${req.user.id}`);
+
     res.json(teams);
 });
 
@@ -137,6 +166,10 @@ app.delete('/api/user/teams/:teamId', authenticateToken, (req, res) => {
     const user = db.findOne('users', u => u.id === req.user.id);
     const teams = (user.teams || []).filter(t => t.id !== teamId);
     db.update('users', u => u.id === req.user.id, { teams });
+
+    // Invalidate cache
+    cache.del(`teams_${req.user.id}`);
+
     res.json(teams);
 });
 
@@ -161,14 +194,27 @@ app.post('/api/friends/add', authenticateToken, (req, res) => {
     db.update('users', u => u.id === friend.id, { friends: friendFriends });
 
     res.json({ message: 'Friend added', friend: { id: friend.id, name: friend.name } });
+
+    // Invalidate cache for both users
+    cache.del(`friends_${req.user.id}`);
+    cache.del(`friends_${friend.id}`);
 });
 
 app.get('/api/friends', authenticateToken, (req, res) => {
+    const cacheKey = `friends_${req.user.id}`;
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+        return res.json(cachedData);
+    }
+
     const user = db.findOne('users', u => u.id === req.user.id);
     const friends = (user.friends || []).map(fid => {
         const f = db.findOne('users', u => u.id === fid);
         return f ? { id: f.id, name: f.name, friendCode: f.friendCode } : null;
     }).filter(Boolean);
+
+    cache.set(cacheKey, friends);
     res.json(friends);
 });
 
