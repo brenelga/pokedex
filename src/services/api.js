@@ -60,6 +60,14 @@ export const pokeApi = {
     getType: async (type) => {
         const response = await axios.get(`https://pokeapi.co/api/v2/type/${type}`);
         return response.data;
+    },
+    getPokedex: async (id) => {
+        const response = await axios.get(`https://pokeapi.co/api/v2/pokedex/${id}`);
+        return response.data;
+    },
+    getGeneration: async (id) => {
+        const response = await axios.get(`https://pokeapi.co/api/v2/generation/${id}`);
+        return response.data;
     }
 };
 

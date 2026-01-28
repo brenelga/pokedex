@@ -1,95 +1,108 @@
 <template>
   <div class="home">
     <div class="filters">
-      <input v-model="searchQuery" placeholder="Search Pokemon..." @input="handleSearch" />
-      <!-- Add Type filter dropdown later -->
+      <input v-model="filterParams.search" placeholder="Search Pokemon..." @input="handleFilterChange('search')" />
+      
+      <select v-model="filterParams.region" @change="handleFilterChange('region')">
+        <option value="">All Regions</option>
+        <option value="1">Kanto</option>
+        <option value="2">Johto</option>
+        <option value="3">Hoenn</option>
+        <option value="4">Sinnoh</option>
+        <option value="5">Unova</option>
+        <option value="6">Kalos</option>
+        <option value="7">Alola</option>
+        <option value="8">Galar</option>
+      </select>
+
+      <select v-model="filterParams.generation" @change="handleFilterChange('generation')">
+        <option value="">All Generations</option>
+        <option value="1">Gen 1</option>
+        <option value="2">Gen 2</option>
+        <option value="3">Gen 3</option>
+        <option value="4">Gen 4</option>
+        <option value="5">Gen 5</option>
+        <option value="6">Gen 6</option>
+        <option value="7">Gen 7</option>
+        <option value="8">Gen 8</option>
+      </select>
+
+      <select v-model="filterParams.type1" @change="handleFilterChange('type1')">
+        <option value="">Type 1</option>
+        <option v-for="type in types" :key="type" :value="type">{{ type }}</option>
+      </select>
+
+      <select v-model="filterParams.type2" @change="handleFilterChange('type2')">
+        <option value="">Type 2</option>
+        <option v-for="type in types" :key="type" :value="type">{{ type }}</option>
+      </select>
     </div>
 
-    <div v-if="loading" class="loading">Loading...</div>
+    <div v-if="pokemonStore.loading" class="loading">Loading...</div>
 
     <div class="pokemon-grid" v-else>
       <PokemonCard 
-        v-for="p in displayPokemon" 
+        v-for="p in pokemonStore.displayPokemon" 
         :key="p.name" 
         :pokemon="p"
         :isFavorite="isFavorite(p)"
-        @toggle-favorite="updateFavorites"
+        @toggle-favorite="toggleFavorite"
       />
     </div>
     
-    <div class="load-more" v-if="!searchQuery && !loading">
-        <button @click="loadMore">Load More</button>
+    <div class="load-more" v-if="pokemonStore.displayPokemon.length === 0 && !pokemonStore.loading">
+        No Pokemon found.
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { pokeApi, userApi } from '../services/api';
+import { onMounted, reactive } from 'vue';
+import { usePokemonStore } from '../stores/pokemonStore';
 import PokemonCard from '../components/PokemonCard.vue';
 
-const allPokemon = ref([]); // List of { name, url }
-const displayedList = ref([]);
-const favorites = ref([]);
-const loading = ref(false);
-const offset = ref(0);
-const limit = 50;
-const searchQuery = ref('');
+const pokemonStore = usePokemonStore();
 
-const loadPokemon = async () => {
-    loading.value = true;
-    try {
-        const data = await pokeApi.getPokemonList(limit, offset.value);
-        allPokemon.value = [...allPokemon.value, ...data.results];
-        offset.value += limit;
-    } catch (e) {
-        console.error(e);
-    } finally {
-        loading.value = false;
-    }
-};
+const types = [
+  'normal', 'fighting', 'flying', 'poison', 'ground', 'rock', 'bug', 'ghost', 'steel', 
+  'fire', 'water', 'grass', 'electric', 'psychic', 'ice', 'dragon', 'dark', 'fairy'
+];
 
-const loadFavorites = async () => {
-    try {
-        const res = await userApi.getFavorites();
-        favorites.value = res.data;
-    } catch (e) {
-        console.error(e);
-    }
-};
+const filterParams = reactive({
+    search: '',
+    region: '',
+    generation: '',
+    type1: '',
+    type2: ''
+});
 
-const updateFavorites = (id) => {
-    if (favorites.value.includes(id)) {
-        favorites.value = favorites.value.filter(fid => fid !== id);
-    } else {
-        favorites.value.push(id);
-    }
+const handleFilterChange = (key) => {
+    pokemonStore.setFilter(key, filterParams[key]);
 };
 
 const isFavorite = (pokemon) => {
-    const id = Number(pokemon.url ? pokemon.url.split('/')[pokemon.url.split('/').length - 2] : pokemon.id);
-    return favorites.value.includes(id);
+    // Basic check using URL ID or ID property
+    // We need to extract ID if it's not present directly
+    const id = getPokemonId(pokemon);
+    return pokemonStore.favorites.some(f => f.id === id || f === id); // Handle object or ID array
 };
 
-const displayPokemon = computed(() => {
-    if (searchQuery.value) {
-        return allPokemon.value.filter(p => p.name.includes(searchQuery.value.toLowerCase()));
+const toggleFavorite = (id) => {
+    // pokemonStore.toggleFavorite(id);
+    console.log("Toggle favorite not fully implemented in store yet", id);
+};
+
+const getPokemonId = (pokemon) => {
+    if (pokemon.id) return pokemon.id;
+    if (pokemon.url) {
+        const parts = pokemon.url.split('/');
+        return Number(parts[parts.length - 2]);
     }
-    return allPokemon.value;
-});
-
-const handleSearch = () => {
-    // If we want detailed search we might need to search API
-    // For now client side filtering of loaded pokemon
-};
-
-const loadMore = () => {
-    loadPokemon();
+    return 0;
 };
 
 onMounted(() => {
-    loadPokemon();
-    loadFavorites();
+    pokemonStore.initialize();
 });
 </script>
 
@@ -102,15 +115,19 @@ onMounted(() => {
   margin-bottom: 2rem;
   display: flex;
   justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.filters input {
+.filters input, .filters select {
   padding: 10px;
-  width: 100%;
-  max-width: 400px;
   border: 1px solid #ddd;
   border-radius: 20px;
   font-size: 1rem;
+}
+
+.filters input {
+    width: 200px;
 }
 
 .pokemon-grid {
@@ -122,16 +139,6 @@ onMounted(() => {
 .load-more {
     text-align: center;
     margin-top: 2rem;
-}
-
-.load-more button {
-    padding: 10px 30px;
-    background: #ef5350;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 1rem;
 }
 
 .loading {
