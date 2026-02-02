@@ -312,6 +312,9 @@ app.get('/api/battles/:id', authenticateToken, (req, res) => {
     res.json(battle);
 });
 
-app.listen(CONFIG.PORT, () => {
-    console.log(`Server running on port ${CONFIG.PORT}`);
+const HOST = '0.0.0.0'; // Esto permite conexiones externas
+
+app.listen(CONFIG.PORT, HOST, () => {
+    console.log(`✅ Servidor local: http://localhost:${CONFIG.PORT}`);
+    console.log(`✅ Acceso externo: http://TU_IP_PRIVADA:${CONFIG.PORT}`);
 });
