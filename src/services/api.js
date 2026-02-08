@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { saveRequest } from './indexedDB';
 
 const api = axios.create({
     baseURL: 'http://localhost:3000/api',
@@ -15,6 +16,37 @@ api.interceptors.request.use(config => {
     }
     return config;
 });
+
+// Response interceptor for offline handling
+api.interceptors.response.use(
+    response => response,
+    async error => {
+        if (!error.response && error.message === 'Network Error') {
+            const { config } = error;
+            console.log('Network Error detected, saving request to IndexedDB:', config.url);
+
+            try {
+                // Save request to IndexedDB
+                await saveRequest({
+                    url: config.url,
+                    method: config.method,
+                    headers: config.headers,
+                    data: config.data
+                });
+
+                // Register background sync if available
+                if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                    const registration = await navigator.serviceWorker.ready;
+                    await registration.sync.register('sync-offline-requests');
+                    console.log('Background Sync registered: sync-offline-requests');
+                }
+            } catch (dbError) {
+                console.error('Failed to save offline request:', dbError);
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 export const authApi = {
     login: (credentials) => api.post('/auth/login', credentials),
