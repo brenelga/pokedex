@@ -107,3 +107,12 @@ async function syncOfflineRequests() {
         console.error('Error in syncOfflineRequests:', error)
     }
 }
+
+self.addEventListener('push', (event) => {
+    const options={
+        body:event.data.text(),
+        icon:'/icon/juego.png',
+        image:'/icon/juego.png',
+    }
+    self.registration.showNotification("titulo", options);
+});

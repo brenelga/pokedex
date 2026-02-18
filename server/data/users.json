@@ -5,7 +5,9 @@
     "password": "$2b$10$C9EGywP/vaF2o7.fOxx0BOBdSGfaPubem3Kkdwr8WdXD6I9EhPexq",
     "name": "Brenel",
     "friendCode": "EB8DA1",
-    "favorites": [],
+    "favorites": [
+      null
+    ],
     "teams": [
       {
         "name": "My Team",
