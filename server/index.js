@@ -7,6 +7,12 @@ import { CONFIG } from './config.js';
 import crypto from 'crypto';
 import cache from './cache.js';
 import { sendPushToUser } from './push.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '../dist');
 
 const app = express();
 
@@ -335,6 +341,14 @@ app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
 
     await db.update('users', u => u.id === req.user.id, { pushSubscription: subscription });
     res.json({ message: 'Subscribed to push notifications' });
+});
+
+// --- FRONTEND SERVING ---
+app.use(express.static(distPath));
+
+// Catch-all route for SPA navigation - must be the last route
+app.use((req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
 });
 
 const HOST = '0.0.0.0'; // Esto permite conexiones externas
