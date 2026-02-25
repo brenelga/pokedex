@@ -6,6 +6,7 @@ import { db } from './db.js';
 import { CONFIG } from './config.js';
 import crypto from 'crypto';
 import cache from './cache.js';
+import { sendPushToUser } from './push.js';
 
 const app = express();
 
@@ -198,6 +199,14 @@ app.post('/api/friends/add', authenticateToken, (req, res) => {
     // Invalidate cache for both users
     cache.del(`friends_${req.user.id}`);
     cache.del(`friends_${friend.id}`);
+
+    // Send push notification to friend
+    sendPushToUser(friend, {
+        title: '¡Nueva invitación!',
+        body: `${user.name} te ha añadido como amigo.`,
+        icon: '/pwa-192x192.png',
+        data: { url: '/friends' }
+    });
 });
 
 app.get('/api/friends', authenticateToken, (req, res) => {
@@ -252,6 +261,14 @@ app.post('/api/battles/create', authenticateToken, (req, res) => {
 
     db.add('battles', battle);
     res.json(battle);
+
+    // Send push notification to opponent
+    sendPushToUser(opponent, {
+        title: '¡Reto de batalla!',
+        body: `${user.name} te ha retado a una batalla.`,
+        icon: '/pwa-192x192.png',
+        data: { url: '/battle' }
+    });
 });
 
 app.get('/api/battles', authenticateToken, (req, res) => {
@@ -310,6 +327,15 @@ app.post('/api/battles/:id/move', authenticateToken, (req, res) => {
 app.get('/api/battles/:id', authenticateToken, (req, res) => {
     const battle = db.findOne('battles', b => b.id === req.params.id);
     res.json(battle);
+});
+
+// --- PUSH NOTIFICATIONS ---
+app.post('/api/push/subscribe', authenticateToken, (req, res) => {
+    const { subscription } = req.body;
+    if (!subscription) return res.status(400).json({ error: 'Subscription required' });
+
+    db.update('users', u => u.id === req.user.id, { pushSubscription: subscription });
+    res.json({ message: 'Subscribed to push notifications' });
 });
 
 const HOST = '0.0.0.0'; // Esto permite conexiones externas

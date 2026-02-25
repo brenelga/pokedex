@@ -1,8 +1,9 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
 import { useAuthStore } from './stores/auth'
-import { computed } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { requestPermission } from './services/push'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -14,6 +15,13 @@ const logout = () => {
   authStore.logout()
   router.push('/login')
 }
+
+// Subscribe to push notifications when authenticated
+watch(isAuthenticated, (val) => {
+  if (val) {
+    requestPermission()
+  }
+}, { immediate: true })
 </script>
 
 <template>
