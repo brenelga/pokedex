@@ -100,6 +100,10 @@ export const pokeApi = {
     getGeneration: async (id) => {
         const response = await axios.get(`https://pokeapi.co/api/v2/generation/${id}`);
         return response.data;
+    },
+    getEncounters: async (url) => {
+        const response = await axios.get(url);
+        return response.data;
     }
 };
 

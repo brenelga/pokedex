@@ -154,9 +154,13 @@ export const usePokemonStore = defineStore('pokemon', {
             }
         },
 
-        async toggleFavorite(pokemon) {
-            // Logic to toggle
-            // ...
+        async toggleFavorite(pokemonId) {
+            try {
+                const res = await userApi.toggleFavorite(pokemonId);
+                this.favorites = res.data;
+            } catch (e) {
+                console.error("Error toggling favorite", e);
+            }
         }
     }
 });

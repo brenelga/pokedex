@@ -88,8 +88,7 @@ const isFavorite = (pokemon) => {
 };
 
 const toggleFavorite = (id) => {
-    // pokemonStore.toggleFavorite(id);
-    console.log("Toggle favorite not fully implemented in store yet", id);
+    pokemonStore.toggleFavorite(id);
 };
 
 const getPokemonId = (pokemon) => {

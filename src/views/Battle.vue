@@ -54,9 +54,10 @@
             <div class="controls" v-if="isMyTurn">
                 <h4>Your Turn!</h4>
                 <div class="moves">
-                    <button @click="makeMove('Attack')">Attack</button>
-                    <button @click="makeMove('Defend')">Defend</button>
-                    <button @click="makeMove('Special')">Special</button>
+                    <button v-for="move in myMoves" :key="move" @click="makeMove(move)">
+                        {{ move.replace('-', ' ') }}
+                    </button>
+                    <button v-if="myMoves.length === 0" disabled>No moves selected!</button>
                 </div>
             </div>
             <div v-else class="waiting-turn">
@@ -185,6 +186,22 @@ const getOpponentName = (battle) => {
 
 const isMyTurn = computed(() => {
     return currentBattle.value?.turn === userId.value;
+});
+
+const myTeam = computed(() => {
+    if (!currentBattle.value) return null;
+    return currentBattle.value.player1 === userId.value 
+        ? currentBattle.value.player1Team 
+        : currentBattle.value.player2Team;
+});
+
+const myMoves = computed(() => {
+    // Show moves for the first member of the team for now
+    const member = myTeam.value?.members?.[0];
+    if (member?.selectedMoves?.length > 0) {
+        return member.selectedMoves;
+    }
+    return ['Attack', 'Defend', 'Special']; // Fallback for old teams or unconfigured ones
 });
 
 onMounted(() => {

@@ -34,7 +34,7 @@ app.post('/api/auth/register', async (req, res) => {
         const { email, password, name } = req.body;
         if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-        const existingUser = db.findOne('users', u => u.email === email);
+        const existingUser = await db.findOne('users', u => u.email === email);
         if (existingUser) return res.status(400).json({ error: 'User already exists' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -51,20 +51,20 @@ app.post('/api/auth/register', async (req, res) => {
             friends: []    // Array of User IDs
         };
 
-        db.add('users', newUser);
+        await db.add('users', newUser);
 
         const token = jwt.sign({ id: newUser.id, email: newUser.email }, CONFIG.JWT_SECRET);
         res.json({ token, user: { id: newUser.id, name: newUser.name, email: newUser.email, friendCode: newUser.friendCode } });
     } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Registration Error:', e);
+        res.status(500).json({ error: 'Internal server error', details: e.message });
     }
 });
 
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = db.findOne('users', u => u.email === email);
+        const user = await db.findOne('users', u => u.email === email);
         if (!user) return res.status(400).json({ error: 'User not found' });
 
         if (await bcrypt.compare(password, user.password)) {
@@ -74,21 +74,25 @@ app.post('/api/auth/login', async (req, res) => {
             res.status(403).json({ error: 'Invalid password' });
         }
     } catch (e) {
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Login Error:', e);
+        res.status(500).json({ error: 'Internal server error', details: e.message });
     }
 });
 
-app.get('/api/auth/me', authenticateToken, (req, res) => {
-    const user = db.findOne('users', u => u.id === req.user.id);
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+    const user = await db.findOne('users', u => u.id === req.user.id);
     if (!user) return res.sendStatus(404);
-    const { password, ...safeUser } = user;
+    const { password, ...safeUser } = user.toObject ? user.toObject() : user;
     res.json(safeUser);
+}, (err, req, res, next) => {
+    console.error('Auth Me Error:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
 });
 
 // --- USER FEATURES ---
 
 // Favorites
-app.get('/api/user/favorites', authenticateToken, (req, res) => {
+app.get('/api/user/favorites', authenticateToken, async (req, res) => {
     const cacheKey = `favorites_${req.user.id}`;
     const cachedData = cache.get(cacheKey);
 
@@ -96,16 +100,16 @@ app.get('/api/user/favorites', authenticateToken, (req, res) => {
         return res.json(cachedData);
     }
 
-    const user = db.findOne('users', u => u.id === req.user.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
     const favorites = user.favorites || [];
 
     cache.set(cacheKey, favorites);
     res.json(favorites);
 });
 
-app.post('/api/user/favorites', authenticateToken, (req, res) => {
+app.post('/api/user/favorites', authenticateToken, async (req, res) => {
     const { pokemonId } = req.body;
-    const user = db.findOne('users', u => u.id === req.user.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
 
     let favorites = user.favorites || [];
     if (favorites.includes(pokemonId)) {
@@ -114,7 +118,7 @@ app.post('/api/user/favorites', authenticateToken, (req, res) => {
         favorites.push(pokemonId);
     }
 
-    db.update('users', u => u.id === req.user.id, { favorites });
+    await db.update('users', u => u.id === req.user.id, { favorites });
 
     // Invalidate cache
     cache.del(`favorites_${req.user.id}`);
@@ -123,7 +127,7 @@ app.post('/api/user/favorites', authenticateToken, (req, res) => {
 });
 
 // Teams
-app.get('/api/user/teams', authenticateToken, (req, res) => {
+app.get('/api/user/teams', authenticateToken, async (req, res) => {
     const cacheKey = `teams_${req.user.id}`;
     const cachedData = cache.get(cacheKey);
 
@@ -131,16 +135,16 @@ app.get('/api/user/teams', authenticateToken, (req, res) => {
         return res.json(cachedData);
     }
 
-    const user = db.findOne('users', u => u.id === req.user.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
     const teams = user.teams || [];
 
     cache.set(cacheKey, teams);
     res.json(teams);
 });
 
-app.post('/api/user/teams', authenticateToken, (req, res) => {
+app.post('/api/user/teams', authenticateToken, async (req, res) => {
     const { team } = req.body; // Expect { id, name, members: [pokemon] }
-    const user = db.findOne('users', u => u.id === req.user.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
 
     let teams = user.teams || [];
     if (team.id) {
@@ -154,7 +158,7 @@ app.post('/api/user/teams', authenticateToken, (req, res) => {
         teams.push(team);
     }
 
-    db.update('users', u => u.id === req.user.id, { teams });
+    await db.update('users', u => u.id === req.user.id, { teams });
 
     // Invalidate cache
     cache.del(`teams_${req.user.id}`);
@@ -162,11 +166,11 @@ app.post('/api/user/teams', authenticateToken, (req, res) => {
     res.json(teams);
 });
 
-app.delete('/api/user/teams/:teamId', authenticateToken, (req, res) => {
+app.delete('/api/user/teams/:teamId', authenticateToken, async (req, res) => {
     const { teamId } = req.params;
-    const user = db.findOne('users', u => u.id === req.user.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
     const teams = (user.teams || []).filter(t => t.id !== teamId);
-    db.update('users', u => u.id === req.user.id, { teams });
+    await db.update('users', u => u.id === req.user.id, { teams });
 
     // Invalidate cache
     cache.del(`teams_${req.user.id}`);
@@ -175,24 +179,24 @@ app.delete('/api/user/teams/:teamId', authenticateToken, (req, res) => {
 });
 
 // Friends
-app.post('/api/friends/add', authenticateToken, (req, res) => {
+app.post('/api/friends/add', authenticateToken, async (req, res) => {
     const { friendCode } = req.body;
-    const friend = db.findOne('users', u => u.friendCode === friendCode);
+    const friend = await db.findOne('users', u => u.friendCode === friendCode);
 
     if (!friend) return res.status(404).json({ error: 'Friend not found' });
     if (friend.id === req.user.id) return res.status(400).json({ error: 'Cannot add yourself' });
 
-    const user = db.findOne('users', u => u.id === req.user.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
     if (user.friends && user.friends.includes(friend.id)) {
         return res.status(400).json({ error: 'Already friends' });
     }
 
     const friends = [...(user.friends || []), friend.id];
-    db.update('users', u => u.id === req.user.id, { friends });
+    await db.update('users', u => u.id === req.user.id, { friends });
 
     // Also add current user to friend's list (mutual)
     const friendFriends = [...(friend.friends || []), user.id];
-    db.update('users', u => u.id === friend.id, { friends: friendFriends });
+    await db.update('users', u => u.id === friend.id, { friends: friendFriends });
 
     res.json({ message: 'Friend added', friend: { id: friend.id, name: friend.name } });
 
@@ -209,7 +213,7 @@ app.post('/api/friends/add', authenticateToken, (req, res) => {
     });
 });
 
-app.get('/api/friends', authenticateToken, (req, res) => {
+app.get('/api/friends', authenticateToken, async (req, res) => {
     const cacheKey = `friends_${req.user.id}`;
     const cachedData = cache.get(cacheKey);
 
@@ -217,11 +221,12 @@ app.get('/api/friends', authenticateToken, (req, res) => {
         return res.json(cachedData);
     }
 
-    const user = db.findOne('users', u => u.id === req.user.id);
-    const friends = (user.friends || []).map(fid => {
-        const f = db.findOne('users', u => u.id === fid);
+    const user = await db.findOne('users', u => u.id === req.user.id);
+    const friendsPromises = (user.friends || []).map(async fid => {
+        const f = await db.findOne('users', u => u.id === fid);
         return f ? { id: f.id, name: f.name, friendCode: f.friendCode } : null;
-    }).filter(Boolean);
+    });
+    const friends = (await Promise.all(friendsPromises)).filter(Boolean);
 
     cache.set(cacheKey, friends);
     res.json(friends);
@@ -233,19 +238,13 @@ app.get('/api/friends', authenticateToken, (req, res) => {
 // 2. Poll Battle State
 // 3. Make Move
 
-app.post('/api/battles/create', authenticateToken, (req, res) => {
+app.post('/api/battles/create', authenticateToken, async (req, res) => {
     const { opponentId, myTeamId } = req.body;
 
-    const user = db.findOne('users', u => u.id === req.user.id);
-    const opponent = db.findOne('users', u => u.id === opponentId);
+    const user = await db.findOne('users', u => u.id === req.user.id);
+    const opponent = await db.findOne('users', u => u.id === opponentId);
 
     const myTeam = user.teams.find(t => t.id === myTeamId);
-
-    // For opponent, we'll pick their first team or random for now, or just wait for them to join?
-    // Simplified: Opponent must "Accept" or we Auto-Assign their first team
-    // Let's assume we challenge them and they have to join/accept with a team.
-    // BUT for simplicity, let's say the battle starts when both are ready?
-    // Or: P1 creates battle. P2 sees it and joins.
 
     const battle = {
         id: Date.now().toString(),
@@ -259,7 +258,7 @@ app.post('/api/battles/create', authenticateToken, (req, res) => {
         lastUpdate: Date.now()
     };
 
-    db.add('battles', battle);
+    await db.add('battles', battle);
     res.json(battle);
 
     // Send push notification to opponent
@@ -271,38 +270,38 @@ app.post('/api/battles/create', authenticateToken, (req, res) => {
     });
 });
 
-app.get('/api/battles', authenticateToken, (req, res) => {
-    const battles = db.read('battles').filter(b =>
+app.get('/api/battles', authenticateToken, async (req, res) => {
+    const battles = (await db.read('battles')).filter(b =>
         (b.player1 === req.user.id || b.player2 === req.user.id) && b.status !== 'finished'
     );
     res.json(battles);
 });
 
-app.post('/api/battles/:id/join', authenticateToken, (req, res) => {
+app.post('/api/battles/:id/join', authenticateToken, async (req, res) => {
     const { teamId } = req.body;
-    const battle = db.findOne('battles', b => b.id === req.params.id);
+    const battle = await db.findOne('battles', b => b.id === req.params.id);
 
     if (!battle) return res.status(404).json({ error: 'Battle not found' });
     if (battle.player2 !== req.user.id) return res.status(403).json({ error: 'Not authorized' });
 
-    const user = db.findOne('users', u => u.id === req.user.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
     const team = user.teams.find(t => t.id === teamId);
 
     if (!team) return res.status(400).json({ error: 'Team not found' });
 
-    db.update('battles', b => b.id === req.params.id, {
+    await db.update('battles', b => b.id === req.params.id, {
         player2Team: team,
         status: 'active',
         logs: [...battle.logs, `${user.name} joined the battle!`]
     });
 
-    res.json(db.findOne('battles', b => b.id === req.params.id));
+    res.json(await db.findOne('battles', b => b.id === req.params.id));
 });
 
-app.post('/api/battles/:id/move', authenticateToken, (req, res) => {
+app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
     const { move, pokemonIndex } = req.body; // Simplified move
     // Execute move logic (stubbed for now)
-    const battle = db.findOne('battles', b => b.id === req.params.id);
+    const battle = await db.findOne('battles', b => b.id === req.params.id);
 
     if (battle.turn !== req.user.id) return res.status(400).json({ error: 'Not your turn' });
 
@@ -315,26 +314,26 @@ app.post('/api/battles/:id/move', authenticateToken, (req, res) => {
     const log = `Player ${req.user.id} used ${move || 'Attack'}!`;
     const nextTurn = opponentId;
 
-    db.update('battles', b => b.id === req.params.id, {
+    await db.update('battles', b => b.id === req.params.id, {
         turn: nextTurn,
         logs: [...battle.logs, log],
         lastUpdate: Date.now()
     });
 
-    res.json(db.findOne('battles', b => b.id === req.params.id));
+    res.json(await db.findOne('battles', b => b.id === req.params.id));
 });
 
-app.get('/api/battles/:id', authenticateToken, (req, res) => {
-    const battle = db.findOne('battles', b => b.id === req.params.id);
+app.get('/api/battles/:id', authenticateToken, async (req, res) => {
+    const battle = await db.findOne('battles', b => b.id === req.params.id);
     res.json(battle);
 });
 
 // --- PUSH NOTIFICATIONS ---
-app.post('/api/push/subscribe', authenticateToken, (req, res) => {
+app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
     const { subscription } = req.body;
     if (!subscription) return res.status(400).json({ error: 'Subscription required' });
 
-    db.update('users', u => u.id === req.user.id, { pushSubscription: subscription });
+    await db.update('users', u => u.id === req.user.id, { pushSubscription: subscription });
     res.json({ message: 'Subscribed to push notifications' });
 });
 

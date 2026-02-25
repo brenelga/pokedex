@@ -33,11 +33,36 @@
         <div class="members-grid">
             <div v-for="(member, index) in currentTeam.members" :key="index" class="member-slot filled">
                 <img :src="member.sprite" alt="">
-                <span>{{ member.name }}</span>
+                <span class="member-name">{{ member.name }}</span>
+                
+                <div class="selected-moves" v-if="member.selectedMoves?.length">
+                    <span v-for="m in member.selectedMoves" :key="m" class="mini-move">{{ m }}</span>
+                </div>
+                
+                <button @click="openMoveSelector(index)" class="moves-btn">Moves ({{ member.selectedMoves?.length || 0 }}/4)</button>
                 <button @click="removeMember(index)" class="remove-btn">x</button>
             </div>
             <div v-for="n in (6 - currentTeam.members.length)" :key="'empty'+n" class="member-slot empty">
                 <span>Empty Slot</span>
+            </div>
+        </div>
+
+        <!-- MOVE SELECTOR MODAL -->
+        <div v-if="showMoveSelector" class="modal">
+            <div class="modal-content move-selector">
+                <h3>Select Moves for {{ currentMember.name }}</h3>
+                <p class="subtitle">Select up to 4 moves</p>
+                <div class="moves-list-selector">
+                    <div v-for="m in currentMemberMoves" :key="m.move.name" 
+                         class="move-option" 
+                         :class="{ selected: isMoveSelected(m.move.name) }"
+                         @click="toggleMove(m.move.name)">
+                        {{ m.move.name.replace('-', ' ') }}
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button @click="closeMoveSelector">Done</button>
+                </div>
             </div>
         </div>
 
@@ -66,6 +91,12 @@ const isEditing = ref(false);
 const currentTeam = ref({ name: '', members: [] });
 const searchQuery = ref('');
 const searchResult = ref(null);
+
+// Move Selection
+const showMoveSelector = ref(false);
+const editingMemberIndex = ref(-1);
+const currentMemberMoves = ref([]);
+const currentMember = computed(() => editingMemberIndex.value !== -1 ? currentTeam.value.members[editingMemberIndex.value] : null);
 
 const loadTeams = async () => {
     try {
@@ -125,10 +156,56 @@ const addMember = () => {
     currentTeam.value.members.push({
         id: searchResult.value.id,
         name: searchResult.value.name,
-        sprite: searchResult.value.sprites.front_default
+        sprite: searchResult.value.sprites.front_default,
+        selectedMoves: [],
+        allMoves: searchResult.value.moves // Temporary store to avoid re-fetching
     });
     searchResult.value = null;
     searchQuery.value = '';
+};
+
+const openMoveSelector = async (index) => {
+    editingMemberIndex.value = index;
+    const member = currentTeam.value.members[index];
+    
+    if (member.allMoves) {
+        currentMemberMoves.value = member.allMoves;
+    } else {
+        // Fetch if not available (shouldn't happen on new add, but maybe on edit)
+        try {
+            const data = await pokeApi.getPokemonDetails(member.id);
+            member.allMoves = data.moves;
+            currentMemberMoves.value = data.moves;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    showMoveSelector.value = true;
+};
+
+const closeMoveSelector = () => {
+    showMoveSelector.value = false;
+    editingMemberIndex.value = -1;
+};
+
+const isMoveSelected = (moveName) => {
+    return currentMember.value?.selectedMoves?.includes(moveName);
+};
+
+const toggleMove = (moveName) => {
+    const member = currentMember.value;
+    if (!member.selectedMoves) member.selectedMoves = [];
+    
+    const idx = member.selectedMoves.indexOf(moveName);
+    if (idx !== -1) {
+        member.selectedMoves.splice(idx, 1);
+    } else {
+        if (member.selectedMoves.length < 4) {
+            member.selectedMoves.push(moveName);
+        } else {
+            alert('Maximum 4 moves allowed');
+        }
+    }
 };
 
 const removeMember = (index) => {
@@ -249,5 +326,84 @@ onMounted(loadTeams);
     padding: 10px;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Moves UI */
+.moves-btn {
+    margin-top: auto;
+    width: 90%;
+    padding: 5px;
+    font-size: 0.8rem;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.selected-moves {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin: 5px 0;
+}
+
+.mini-move {
+    background: #e3f2fd;
+    color: #1565c0;
+    font-size: 0.65rem;
+    padding: 1px 4px;
+    border-radius: 4px;
+    text-transform: capitalize;
+}
+
+.move-selector {
+    max-width: 400px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.moves-list-selector {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 15px 0;
+    padding: 10px;
+}
+
+.move-option {
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+    text-transform: capitalize;
+    font-size: 0.9rem;
+    border: 2px solid transparent;
+}
+
+.move-option:hover {
+    background: #eee;
+}
+
+.move-option.selected {
+    background: #e3f2fd;
+    border-color: #2196F3;
+    color: #1976D2;
+    font-weight: bold;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.modal {
+    z-index: 1000;
 }
 </style>
