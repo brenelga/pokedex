@@ -96,7 +96,17 @@ class MongooseDatabase {
             filter = { _id: item._id };
         }
 
-        return await this.models[collection].findOneAndUpdate(filter, updates, { returnDocument: 'after' });
+        const doc = await this.models[collection].findOne(filter);
+        if (!doc) return null;
+
+        Object.assign(doc, updates);
+
+        // Mark paths as modified so Mixed types and arrays are saved properly
+        Object.keys(updates).forEach(key => {
+            doc.markModified(key);
+        });
+
+        return await doc.save();
     }
 }
 

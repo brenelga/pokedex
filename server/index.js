@@ -286,7 +286,7 @@ app.post('/api/battles/create', authenticateToken, async (req, res) => {
 
 app.get('/api/battles', authenticateToken, async (req, res) => {
     const battles = (await db.read('battles')).filter(b =>
-        (b.player1 === req.user.id || b.player2 === req.user.id) && b.status !== 'finished'
+        (b.player1 === req.user.id || b.player2 === req.user.id)
     );
     res.json(battles);
 });
@@ -408,7 +408,8 @@ app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
             }
 
             await db.update('battles', b => b.id === req.params.id, {
-                [oppTeamKey]: battle[oppTeamKey],
+                player1Team: battle.player1Team,
+                player2Team: battle.player2Team,
                 status: newStatus,
                 turn: newStatus === 'finished' ? null : nextTurn,
                 logs: [...battle.logs, log],
