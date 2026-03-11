@@ -1,11 +1,16 @@
 import webpush from 'web-push';
 import { CONFIG } from './config.js';
 
-webpush.setVapidDetails(
-    CONFIG.VAPID_EMAIL,
-    CONFIG.VAPID_PUBLIC_KEY,
-    CONFIG.VAPID_PRIVATE_KEY
-);
+if (CONFIG.VAPID_PUBLIC_KEY && CONFIG.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        CONFIG.VAPID_EMAIL,
+        CONFIG.VAPID_PUBLIC_KEY,
+        CONFIG.VAPID_PRIVATE_KEY
+    );
+    console.log('✅ Push notifications configured');
+} else {
+    console.warn('⚠️ Push notifications disabled: Missing VAPID keys');
+}
 
 export const sendNotification = async (subscription, payload) => {
     try {

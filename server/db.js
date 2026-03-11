@@ -92,7 +92,7 @@ class MongooseDatabase {
             filter = { _id: item._id };
         }
 
-        return await this.models[collection].findOneAndUpdate(filter, updates, { new: true });
+        return await this.models[collection].findOneAndUpdate(filter, updates, { returnDocument: 'after' });
     }
 }
 
