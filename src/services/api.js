@@ -69,7 +69,7 @@ export const battleApi = {
     join: (battleId, teamId) => api.post(`/battles/${battleId}/join`, { teamId }),
     getBattles: () => api.get('/battles'),
     getBattle: (id) => api.get(`/battles/${id}`),
-    move: (battleId, move, pokemonIndex) => api.post(`/battles/${battleId}/move`, { move, pokemonIndex })
+    move: (battleId, payload) => api.post(`/battles/${battleId}/move`, payload)
 };
 
 export const pokeApi = {

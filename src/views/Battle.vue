@@ -46,22 +46,77 @@
             <p v-else>Waiting for opponent to join...</p>
         </div>
 
-        <div v-else-if="currentBattle.status === 'active'" class="active-battle">
-            <div class="logs">
+        <div v-else-if="currentBattle.status === 'active' || currentBattle.status === 'finished'" class="active-battle">
+            <div class="battlefield">
+                <!-- Opponent -->
+                <div class="pokemon opponent-pokemon">
+                    <div class="stats-box">
+                        <span class="name">{{ oppActivePokemon?.name }}</span>
+                        <div class="hp-bar-container">
+                            <div class="hp-bar" :style="{ width: ((oppActivePokemon?.currentHp / oppActivePokemon?.maxHp) * 100) + '%' }" :class="hpColor(oppActivePokemon)"></div>
+                        </div>
+                        <span class="hp-text">{{ oppActivePokemon?.currentHp }} / {{ oppActivePokemon?.maxHp }}</span>
+                    </div>
+                    <div class="platform">
+                        <img :src="oppActivePokemon?.sprite" />
+                    </div>
+                </div>
+
+                <!-- Player -->
+                <div class="pokemon player-pokemon">
+                    <div class="platform">
+                        <img :src="myActivePokemon?.sprite" />
+                    </div>
+                    <div class="stats-box">
+                        <span class="name">{{ myActivePokemon?.name }}</span>
+                        <div class="hp-bar-container">
+                            <div class="hp-bar" :style="{ width: ((myActivePokemon?.currentHp / myActivePokemon?.maxHp) * 100) + '%' }" :class="hpColor(myActivePokemon)"></div>
+                        </div>
+                        <span class="hp-text">{{ myActivePokemon?.currentHp }} / {{ myActivePokemon?.maxHp }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="logs" ref="logsContainer">
                 <div v-for="(log, i) in currentBattle.logs" :key="i">{{ log }}</div>
             </div>
             
-            <div class="controls" v-if="isMyTurn">
-                <h4>Your Turn!</h4>
-                <div class="moves">
-                    <button v-for="move in myMoves" :key="move" @click="makeMove(move)">
-                        {{ move.replace('-', ' ') }}
-                    </button>
-                    <button v-if="myMoves.length === 0" disabled>No moves selected!</button>
+            <div class="controls" v-if="currentBattle.status !== 'finished' && isMyTurn">
+                <h4>What will {{ myActivePokemon?.name }} do?</h4>
+                <div class="actions-grid">
+                    <button class="action-btn fight-btn" @click="showMoves = true; showSwitch = false" v-if="!showMoves && !showSwitch">FIGHT</button>
+                    <button class="action-btn switch-btn" @click="showSwitch = true; showMoves = false" v-if="!showMoves && !showSwitch">SWITCH</button>
+                    
+                    <template v-if="showMoves">
+                        <div class="moves-grid">
+                            <button v-for="move in myMoves" :key="move" @click="makeMove(move)" class="move-btn">
+                                {{ move.replace('-', ' ') }}
+                            </button>
+                        </div>
+                        <button v-if="myMoves.length === 0" disabled>No moves selected!</button>
+                        <button class="back-btn" @click="showMoves = false">BACK</button>
+                    </template>
+
+                    <template v-if="showSwitch">
+                        <div class="switch-list">
+                            <button v-for="(p, i) in myTeam?.members" :key="p.id" 
+                                    @click="switchPokemon(i)" 
+                                    :disabled="p.currentHp === 0 || i === myActiveIndex"
+                                    class="switch-option">
+                                <img :src="p.sprite" class="mini-sprite"/> 
+                                <span>{{ p.name }}</span>
+                                <span>HP: {{ p.currentHp }}/{{ p.maxHp }}</span>
+                            </button>
+                        </div>
+                        <button class="back-btn" @click="showSwitch = false">BACK</button>
+                    </template>
                 </div>
             </div>
-            <div v-else class="waiting-turn">
+            <div v-else-if="currentBattle.status !== 'finished'" class="waiting-turn">
                 Waiting for opponent...
+            </div>
+            <div v-else class="finished-message">
+                <h2>Battle Finished!</h2>
             </div>
         </div>
     </div>
@@ -100,6 +155,11 @@ const selectedFriend = ref(null);
 const showTeamSelect = ref(false);
 const selectedTeamId = ref('');
 
+const showMoves = ref(false);
+const showSwitch = ref(false);
+
+const logsContainer = ref(null);
+
 let pollInterval;
 
 const loadData = async () => {
@@ -116,7 +176,17 @@ const loadData = async () => {
         // Update current battle if open
         if (currentBattle.value) {
             const up = battles.value.find(b => b.id === currentBattle.value.id);
-            if (up) currentBattle.value = up;
+            if (up) {
+                const logsChanged = currentBattle.value.logs?.length !== up.logs?.length;
+                currentBattle.value = up;
+                if (logsChanged) {
+                    setTimeout(() => {
+                        if (logsContainer.value) {
+                            logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
+                        }
+                    }, 50);
+                }
+            }
         }
     } catch (e) {
         console.error(e);
@@ -154,6 +224,8 @@ const openBattle = (battle) => {
 
 const closeBattle = () => {
     currentBattle.value = null;
+    showMoves.value = false;
+    showSwitch.value = false;
 };
 
 const joinBattle = async () => {
@@ -165,12 +237,23 @@ const joinBattle = async () => {
     }
 };
 
-const makeMove = async (move) => {
+const makeMove = async (moveName) => {
     try {
-        await battleApi.move(currentBattle.value.id, move, 0);
+        await battleApi.move(currentBattle.value.id, { action: 'move', moveName });
+        showMoves.value = false;
         loadData();
     } catch (e) {
-        console.error(e);
+        alert(e.response?.data?.error || 'Error making move');
+    }
+};
+
+const switchPokemon = async (index) => {
+    try {
+        await battleApi.move(currentBattle.value.id, { action: 'switch', switchIndex: index });
+        showSwitch.value = false;
+        loadData();
+    } catch (e) {
+        alert(e.response?.data?.error || 'Error switching pokemon');
     }
 };
 
@@ -188,21 +271,45 @@ const isMyTurn = computed(() => {
     return currentBattle.value?.turn === userId.value;
 });
 
-const myTeam = computed(() => {
-    if (!currentBattle.value) return null;
-    return currentBattle.value.player1 === userId.value 
-        ? currentBattle.value.player1Team 
-        : currentBattle.value.player2Team;
+const isPlayer1 = computed(() => currentBattle.value?.player1 === userId.value);
+
+const myActiveIndex = computed(() => {
+    if (!currentBattle.value) return 0;
+    return isPlayer1.value ? currentBattle.value.activePokemon1 : currentBattle.value.activePokemon2;
 });
 
-const myMoves = computed(() => {
-    // Show moves for the first member of the team for now
-    const member = myTeam.value?.members?.[0];
-    if (member?.selectedMoves?.length > 0) {
-        return member.selectedMoves;
-    }
-    return ['Attack', 'Defend', 'Special']; // Fallback for old teams or unconfigured ones
+const oppActiveIndex = computed(() => {
+    if (!currentBattle.value) return 0;
+    return !isPlayer1.value ? currentBattle.value.activePokemon1 : currentBattle.value.activePokemon2;
 });
+
+const myTeam = computed(() => {
+    if (!currentBattle.value) return null;
+    return isPlayer1.value ? currentBattle.value.player1Team : currentBattle.value.player2Team;
+});
+
+const oppTeam = computed(() => {
+    if (!currentBattle.value) return null;
+    return !isPlayer1.value ? currentBattle.value.player1Team : currentBattle.value.player2Team;
+});
+
+const myActivePokemon = computed(() => myTeam.value?.members?.[myActiveIndex.value]);
+const oppActivePokemon = computed(() => oppTeam.value?.members?.[oppActiveIndex.value]);
+
+const myMoves = computed(() => {
+    if (myActivePokemon.value?.selectedMoves?.length > 0) {
+        return myActivePokemon.value.selectedMoves;
+    }
+    return ['Attack', 'Defend', 'Special']; // Fallback
+});
+
+const hpColor = (pokemon) => {
+    if (!pokemon || !pokemon.maxHp) return 'hp-high';
+    const percent = pokemon.currentHp / pokemon.maxHp;
+    if (percent > 0.5) return 'hp-high';
+    if (percent > 0.2) return 'hp-medium';
+    return 'hp-low';
+}
 
 onMounted(() => {
     loadData();
@@ -298,21 +405,174 @@ onUnmounted(() => {
     overflow-y: auto;
     background: #fafafa;
     margin-bottom: 10px;
-    max-height: 300px;
+    max-height: 200px;
 }
 .controls {
-    text-align: center;
+    background: #f0f0f0;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #ddd;
 }
-.moves button {
-    padding: 10px 20px;
-    margin: 5px;
-    font-size: 1.1rem;
+.actions-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+}
+.action-btn {
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 120px;
+}
+.fight-btn { background: #f44336; color: white; }
+.switch-btn { background: #2196F3; color: white; }
+
+.moves-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+}
+.move-btn {
+    padding: 15px;
+    background: #FFCA28;
+    border: 2px solid #FFA000;
+    border-radius: 8px;
+    font-weight: bold;
+    text-transform: capitalize;
     cursor: pointer;
 }
+.move-btn:hover { background: #FFD54F; }
+
+.switch-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+}
+.switch-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+    background: white;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.switch-option:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #eee;
+}
+.mini-sprite { width: 40px; height: 40px; }
+.back-btn {
+    padding: 10px;
+    background: #9e9e9e;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+}
+
 .waiting-turn {
     text-align: center;
     font-style: italic;
     color: #666;
+    padding: 20px;
+}
+.finished-message {
+    text-align: center;
+    color: #f44336;
+    padding: 20px;
+}
+
+/* Battlefield Styles */
+.battlefield {
+    min-height: 250px;
+    background: #e8f5e9;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    position: relative;
+    padding: 20px;
+    border: 2px solid #a5d6a7;
+}
+
+.pokemon {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    position: absolute;
+}
+.opponent-pokemon { top: 20px; right: 20px; }
+.player-pokemon { bottom: 20px; left: 20px; flex-direction: row-reverse; }
+
+.platform {
+    width: 120px;
+    height: 40px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 50%;
+    position: relative;
+}
+.platform img {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 96px;
+    height: 96px;
+    image-rendering: pixelated;
+}
+
+.stats-box {
+    background: #fffdf2;
+    border: 3px solid #333;
+    border-radius: 8px 8px 8px 0;
+    padding: 10px;
+    min-width: 180px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+}
+.player-pokemon .stats-box { border-radius: 8px 8px 0 8px; }
+
+.stats-box .name {
+    font-weight: bold;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.hp-bar-container {
+    width: 100%;
+    height: 10px;
+    background: #ccc;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #999;
+}
+
+.hp-bar {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.hp-high { background: #4caf50; }
+.hp-medium { background: #ffeb3b; border-right: 1px solid #fbc02d; } /* Added border for visibility */
+.hp-low { background: #f44336; }
+
+.hp-text {
+    font-size: 0.8rem;
+    display: block;
+    text-align: right;
+    margin-top: 3px;
+    font-family: monospace;
 }
 
 /* Modal */

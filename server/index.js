@@ -252,6 +252,13 @@ app.post('/api/battles/create', authenticateToken, async (req, res) => {
     const opponent = await db.findOne('users', u => u.id === opponentId);
 
     const myTeam = user.teams.find(t => t.id === myTeamId);
+    if (myTeam) {
+        myTeam.members = myTeam.members.map(m => {
+            const hpStat = m.stats?.hp || 100;
+            const maxHp = Math.floor((2 * hpStat * 50) / 100) + 50 + 10;
+            return { ...m, maxHp, currentHp: maxHp };
+        });
+    }
 
     const battle = {
         id: Date.now().toString(),
@@ -293,6 +300,13 @@ app.post('/api/battles/:id/join', authenticateToken, async (req, res) => {
 
     const user = await db.findOne('users', u => u.id === req.user.id);
     const team = user.teams.find(t => t.id === teamId);
+    if (team) {
+        team.members = team.members.map(m => {
+            const hpStat = m.stats?.hp || 100;
+            const maxHp = Math.floor((2 * hpStat * 50) / 100) + 50 + 10;
+            return { ...m, maxHp, currentHp: maxHp };
+        });
+    }
 
     if (!team) return res.status(400).json({ error: 'Team not found' });
 
@@ -306,26 +320,106 @@ app.post('/api/battles/:id/join', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
-    const { move, pokemonIndex } = req.body; // Simplified move
-    // Execute move logic (stubbed for now)
+    const { action, moveName, switchIndex } = req.body; // action: 'move' or 'switch'
     const battle = await db.findOne('battles', b => b.id === req.params.id);
 
     if (battle.turn !== req.user.id) return res.status(400).json({ error: 'Not your turn' });
 
     const isP1 = battle.player1 === req.user.id;
     const opponentId = isP1 ? battle.player2 : battle.player1;
+    let log = '';
+    let nextTurn = opponentId;
 
-    // Logic: Reduce HP of opponent active pokemon
-    // This requires deep game logic. We'll simplify: just log the move and switch turn.
+    if (action === 'switch') {
+        const teamKey = isP1 ? 'player1Team' : 'player2Team';
+        const activeKey = isP1 ? 'activePokemon1' : 'activePokemon2';
 
-    const log = `Player ${req.user.id} used ${move || 'Attack'}!`;
-    const nextTurn = opponentId;
+        const newActive = battle[teamKey].members[switchIndex];
+        if (!newActive || newActive.currentHp === 0) return res.status(400).json({ error: 'Invalid switch' });
 
-    await db.update('battles', b => b.id === req.params.id, {
-        turn: nextTurn,
-        logs: [...battle.logs, log],
-        lastUpdate: Date.now()
-    });
+        log = `Player switched to ${newActive.name}!`;
+
+        await db.update('battles', b => b.id === req.params.id, {
+            [activeKey]: switchIndex,
+            turn: nextTurn,
+            logs: [...battle.logs, log],
+            lastUpdate: Date.now()
+        });
+    } else if (action === 'move') {
+        try {
+            let moveData = cache.get(`move_${moveName}`);
+            if (!moveData) {
+                const response = await fetch(`https://pokeapi.co/api/v2/move/${moveName}`);
+                moveData = await response.json();
+                cache.set(`move_${moveName}`, moveData);
+            }
+
+            const myTeamKey = isP1 ? 'player1Team' : 'player2Team';
+            const oppTeamKey = !isP1 ? 'player1Team' : 'player2Team';
+            const myActiveKey = isP1 ? 'activePokemon1' : 'activePokemon2';
+            const oppActiveKey = !isP1 ? 'activePokemon1' : 'activePokemon2';
+
+            const attacker = battle[myTeamKey].members[battle[myActiveKey]];
+            const defender = battle[oppTeamKey].members[battle[oppActiveKey]];
+
+            if (attacker.currentHp === 0) return res.status(400).json({ error: 'Active Pokemon is fainted' });
+
+            const power = moveData.power || 0;
+            const damageClass = moveData.damage_class?.name || 'physical';
+
+            let damage = 0;
+            if (power > 0) {
+                // Simplified stat calculation (approximating level 50 stats = baseStat + 50)
+                const level = 50;
+                let A = 0, D = 0;
+                if (damageClass === 'physical') {
+                    A = (attacker.stats?.attack || 50) + 50;
+                    D = (defender.stats?.defense || 50) + 50;
+                } else {
+                    A = (attacker.stats?.['special-attack'] || 50) + 50;
+                    D = (defender.stats?.['special-defense'] || 50) + 50;
+                }
+
+                const STAB = attacker.types?.includes(moveData.type.name) ? 1.5 : 1;
+                const random = (Math.floor(Math.random() * 16) + 85) / 100;
+                const modifier = STAB * random; // Simplified type effectiveness to 1
+
+                damage = Math.floor((((2 * level / 5 + 2) * power * A / D) / 50 + 2) * modifier);
+            }
+
+            defender.currentHp = Math.max(0, defender.currentHp - damage);
+            log = `${attacker.name} used ${moveName.replace('-', ' ')}! `;
+            if (damage > 0) {
+                log += `It dealt ${damage} damage to ${defender.name}.`;
+            } else {
+                log += `It did no damage.`;
+            }
+
+            if (defender.currentHp === 0) {
+                log += ` ${defender.name} fainted!`;
+            }
+
+            // Check win condition
+            const oppFaintedCount = battle[oppTeamKey].members.filter(m => m.currentHp === 0).length;
+            let newStatus = battle.status;
+            if (oppFaintedCount === battle[oppTeamKey].members.length) {
+                newStatus = 'finished';
+                log += ` Battle Finished!`; // Let frontend determine who won
+            }
+
+            await db.update('battles', b => b.id === req.params.id, {
+                [oppTeamKey]: battle[oppTeamKey],
+                status: newStatus,
+                turn: newStatus === 'finished' ? null : nextTurn,
+                logs: [...battle.logs, log],
+                lastUpdate: Date.now()
+            });
+
+        } catch (e) {
+            console.error("Move error", e);
+            return res.status(500).json({ error: 'Failed to execute move' });
+        }
+    }
 
     res.json(await db.findOne('battles', b => b.id === req.params.id));
 });

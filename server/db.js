@@ -23,7 +23,9 @@ const UserSchema = new mongoose.Schema({
             id: Number,
             name: String,
             types: [String],
-            sprite: String
+            sprite: String,
+            selectedMoves: [String],
+            stats: mongoose.Schema.Types.Mixed
         }]
     }],
     friends: [String], // Array of User IDs (String as they are MongoDB _ids or the legacy Date.now strings)
@@ -36,6 +38,8 @@ const BattleSchema = new mongoose.Schema({
     player2: String,
     player1Team: mongoose.Schema.Types.Mixed,
     player2Team: mongoose.Schema.Types.Mixed,
+    activePokemon1: { type: Number, default: 0 },
+    activePokemon2: { type: Number, default: 0 },
     status: String,
     turn: String,
     logs: [String],

@@ -153,10 +153,18 @@ const addMember = () => {
         return;
     }
     
+    const types = searchResult.value.types.map(t => t.type.name);
+    const stats = {};
+    searchResult.value.stats.forEach(s => {
+        stats[s.stat.name] = s.base_stat;
+    });
+
     currentTeam.value.members.push({
         id: searchResult.value.id,
         name: searchResult.value.name,
         sprite: searchResult.value.sprites.front_default,
+        types: types,
+        stats: stats,
         selectedMoves: [],
         allMoves: searchResult.value.moves // Temporary store to avoid re-fetching
     });
