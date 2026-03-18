@@ -322,6 +322,7 @@ app.post('/api/battles/:id/join', authenticateToken, async (req, res) => {
 app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
     const { action, moveName, switchIndex } = req.body; // action: 'move' or 'switch'
     const battle = await db.findOne('battles', b => b.id === req.params.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
 
     if (battle.turn !== req.user.id) return res.status(400).json({ error: 'Not your turn' });
 
@@ -369,22 +370,20 @@ app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
 
             let damage = 0;
             if (power > 0) {
-                // Simplified stat calculation (approximating level 50 stats = baseStat + 50)
-                const level = 50;
                 let A = 0, D = 0;
                 if (damageClass === 'physical') {
-                    A = (attacker.stats?.attack || 50) + 50;
-                    D = (defender.stats?.defense || 50) + 50;
+                    A = attacker.stats?.attack || 50;
+                    D = defender.stats?.defense || 50;
                 } else {
-                    A = (attacker.stats?.['special-attack'] || 50) + 50;
-                    D = (defender.stats?.['special-defense'] || 50) + 50;
+                    A = attacker.stats?.['special-attack'] || 50;
+                    D = defender.stats?.['special-defense'] || 50;
                 }
 
                 const STAB = attacker.types?.includes(moveData.type.name) ? 1.5 : 1;
-                const random = (Math.floor(Math.random() * 16) + 85) / 100;
-                const modifier = STAB * random; // Simplified type effectiveness to 1
 
-                damage = Math.floor((((2 * level / 5 + 2) * power * A / D) / 50 + 2) * modifier);
+                // Daño basado directamente en las estadísticas base
+                damage = Math.floor(power * (A / D) * STAB);
+                if (damage < 1) damage = 1; // Mínimo 1 de daño
             }
 
             defender.currentHp = Math.max(0, defender.currentHp - damage);
@@ -404,7 +403,7 @@ app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
             let newStatus = battle.status;
             if (oppFaintedCount === battle[oppTeamKey].members.length) {
                 newStatus = 'finished';
-                log += ` Battle Finished!`; // Let frontend determine who won
+                log += ` Battle Finished! ${user.name} wins by team wipe!`;
             }
 
             await db.update('battles', b => b.id === req.params.id, {
@@ -421,6 +420,28 @@ app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
             return res.status(500).json({ error: 'Failed to execute move' });
         }
     }
+
+    res.json(await db.findOne('battles', b => b.id === req.params.id));
+});
+
+app.post('/api/battles/:id/forfeit', authenticateToken, async (req, res) => {
+    const battle = await db.findOne('battles', b => b.id === req.params.id);
+    const user = await db.findOne('users', u => u.id === req.user.id);
+
+    if (!battle) return res.status(404).json({ error: 'Battle not found' });
+    if (battle.status === 'finished') return res.status(400).json({ error: 'Battle already finished' });
+
+    let log = `${user.name} forfeited the match. `;
+    const opponentId = battle.player1 === user.id ? battle.player2 : battle.player1;
+    const opponent = await db.findOne('users', u => u.id === opponentId);
+    log += `${opponent ? opponent.name : 'Opponent'} wins!`;
+
+    await db.update('battles', b => b.id === req.params.id, {
+        status: 'finished',
+        turn: null,
+        logs: [...battle.logs, log],
+        lastUpdate: Date.now()
+    });
 
     res.json(await db.findOne('battles', b => b.id === req.params.id));
 });

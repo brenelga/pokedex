@@ -32,7 +32,10 @@
     <div v-if="currentBattle" class="battle-arena">
         <div class="arena-header">
             <h3>Battle vs {{ getOpponentName(currentBattle) }}</h3>
-            <button @click="closeBattle">Close</button>
+            <div class="header-buttons">
+                <button v-if="currentBattle.status !== 'finished'" @click="forfeitBattle" class="forfeit-btn">Forfeit</button>
+                <button @click="closeBattle">Close</button>
+            </div>
         </div>
         
         <div v-if="currentBattle.status === 'waiting_for_opponent'" class="waiting">
@@ -117,6 +120,7 @@
             </div>
             <div v-else class="finished-message">
                 <h2>Battle Finished!</h2>
+                <p>{{ currentBattle.logs?.[currentBattle.logs.length - 1] }}</p>
             </div>
         </div>
     </div>
@@ -244,6 +248,16 @@ const makeMove = async (moveName) => {
         loadData();
     } catch (e) {
         alert(e.response?.data?.error || 'Error making move');
+    }
+};
+
+const forfeitBattle = async () => {
+    if (!confirm('Are you sure you want to forfeit this battle?')) return;
+    try {
+        await battleApi.forfeit(currentBattle.value.id);
+        loadData();
+    } catch (e) {
+        alert(e.response?.data?.error || 'Error forfeiting');
     }
 };
 
@@ -397,6 +411,18 @@ onUnmounted(() => {
     border-bottom: 1px solid #eee;
     padding-bottom: 10px;
     margin-bottom: 10px;
+}
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+.forfeit-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
 }
 .logs {
     flex: 1;
