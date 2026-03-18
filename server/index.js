@@ -252,8 +252,10 @@ app.post('/api/battles/create', authenticateToken, async (req, res) => {
     const opponent = await db.findOne('users', u => u.id === opponentId);
 
     const myTeam = user.teams.find(t => t.id === myTeamId);
+    let player1Team = null;
     if (myTeam) {
-        myTeam.members = myTeam.members.map(m => {
+        player1Team = JSON.parse(JSON.stringify(myTeam));
+        player1Team.members = player1Team.members.map(m => {
             const hpStat = m.stats?.hp || 100;
             const maxHp = Math.floor((2 * hpStat * 50) / 100) + 50 + 10;
             return { ...m, maxHp, currentHp: maxHp };
@@ -264,7 +266,7 @@ app.post('/api/battles/create', authenticateToken, async (req, res) => {
         id: Date.now().toString(),
         player1: req.user.id,
         player2: opponentId,
-        player1Team: myTeam,
+        player1Team: player1Team,
         player2Team: null, // Opponent needs to join
         status: 'waiting_for_opponent',
         turn: req.user.id,
@@ -299,8 +301,11 @@ app.post('/api/battles/:id/join', authenticateToken, async (req, res) => {
     if (battle.player2 !== req.user.id) return res.status(403).json({ error: 'Not authorized' });
 
     const user = await db.findOne('users', u => u.id === req.user.id);
-    const team = user.teams.find(t => t.id === teamId);
-    if (team) {
+    const teamDoc = user.teams.find(t => t.id === teamId);
+
+    let team = null;
+    if (teamDoc) {
+        team = JSON.parse(JSON.stringify(teamDoc));
         team.members = team.members.map(m => {
             const hpStat = m.stats?.hp || 100;
             const maxHp = Math.floor((2 * hpStat * 50) / 100) + 50 + 10;
@@ -407,8 +412,8 @@ app.post('/api/battles/:id/move', authenticateToken, async (req, res) => {
             }
 
             await db.update('battles', b => b.id === req.params.id, {
-                player1Team: battle.player1Team,
-                player2Team: battle.player2Team,
+                player1Team: JSON.parse(JSON.stringify(battle.player1Team)),
+                player2Team: JSON.parse(JSON.stringify(battle.player2Team)),
                 status: newStatus,
                 turn: newStatus === 'finished' ? null : nextTurn,
                 logs: [...battle.logs, log],
