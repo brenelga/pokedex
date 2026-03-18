@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -188,36 +189,103 @@ app.delete('/api/user/teams/:teamId', authenticateToken, async (req, res) => {
 // Friends
 app.post('/api/friends/add', authenticateToken, async (req, res) => {
     const { friendCode } = req.body;
-    const friend = await db.findOne('users', u => u.friendCode === friendCode);
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if (!friend) return res.status(404).json({ error: 'Friend not found' });
-    if (friend.id === req.user.id) return res.status(400).json({ error: 'Cannot add yourself' });
+    try {
+        const friend = await db.models.users.findOne({ friendCode }).session(session);
+        if (!friend) {
+            await session.abortTransaction();
+            return res.status(404).json({ error: 'Friend not found' });
+        }
+        if (friend.id === req.user.id) {
+            await session.abortTransaction();
+            return res.status(400).json({ error: 'Cannot add yourself' });
+        }
 
-    const user = await db.findOne('users', u => u.id === req.user.id);
-    if (user.friends && user.friends.includes(friend.id)) {
-        return res.status(400).json({ error: 'Already friends' });
+        const user = await db.models.users.findOne({ id: req.user.id }).session(session);
+        if (user.friends && user.friends.includes(friend.id)) {
+            await session.abortTransaction();
+            return res.status(400).json({ error: 'Already friends' });
+        }
+
+        // Add to user
+        user.friends = [...(user.friends || []), friend.id];
+        user.markModified('friends');
+        await user.save({ session });
+
+        // Add to friend
+        friend.friends = [...(friend.friends || []), user.id];
+        friend.markModified('friends');
+        await friend.save({ session });
+
+        await session.commitTransaction();
+
+        res.json({ message: 'Friend added', friend: { id: friend.id, name: friend.name } });
+
+        cache.del(`friends_${req.user.id}`);
+        cache.del(`friends_${friend.id}`);
+
+        sendPushToUser(friend, {
+            title: '¡Nueva invitación!',
+            body: `${user.name} te ha añadido como amigo.`,
+            icon: '/pwa-192x192.png',
+            data: { url: '/friends' }
+        });
+    } catch (e) {
+        await session.abortTransaction();
+        console.error('Add friend error:', e);
+        res.status(500).json({ error: 'Internal error while adding friend' });
+    } finally {
+        session.endSession();
     }
+});
 
-    const friends = [...(user.friends || []), friend.id];
-    await db.update('users', u => u.id === req.user.id, { friends });
+app.delete('/api/friends/:friendId', authenticateToken, async (req, res) => {
+    const friendId = req.params.friendId;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Also add current user to friend's list (mutual)
-    const friendFriends = [...(friend.friends || []), user.id];
-    await db.update('users', u => u.id === friend.id, { friends: friendFriends });
+    try {
+        const user = await db.models.users.findOne({ id: req.user.id }).session(session);
+        const friend = await db.models.users.findOne({ id: friendId }).session(session);
 
-    res.json({ message: 'Friend added', friend: { id: friend.id, name: friend.name } });
+        if (!user || !friend) {
+            await session.abortTransaction();
+            return res.status(404).json({ error: 'User or friend not found' });
+        }
 
-    // Invalidate cache for both users
-    cache.del(`friends_${req.user.id}`);
-    cache.del(`friends_${friend.id}`);
+        // Remove from user
+        user.friends = (user.friends || []).filter(f => f !== friendId);
+        user.markModified('friends');
+        await user.save({ session });
 
-    // Send push notification to friend
-    sendPushToUser(friend, {
-        title: '¡Nueva invitación!',
-        body: `${user.name} te ha añadido como amigo.`,
-        icon: '/pwa-192x192.png',
-        data: { url: '/friends' }
-    });
+        // Remove from friend
+        friend.friends = (friend.friends || []).filter(f => f !== req.user.id);
+        friend.markModified('friends');
+        await friend.save({ session });
+
+        await session.commitTransaction();
+
+        // Send push notification
+        sendPushToUser(friend, {
+            title: 'Amigo eliminado',
+            body: `${user.name} te ha eliminado de su lista de amigos.`,
+            icon: '/pwa-192x192.png',
+            data: { url: '/friends' }
+        });
+
+        cache.del(`friends_${req.user.id}`);
+        cache.del(`friends_${friend.id}`);
+
+        res.json({ message: 'Friend removed' });
+    } catch (e) {
+        await session.abortTransaction();
+        console.error('Remove friend error:', e);
+        res.status(500).json({ error: 'Internal server error while removing friend' });
+    } finally {
+        session.endSession();
+    }
 });
 
 app.get('/api/friends', authenticateToken, async (req, res) => {

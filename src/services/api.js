@@ -61,6 +61,7 @@ export const userApi = {
     saveTeam: (team) => api.post('/user/teams', { team }),
     deleteTeam: (teamId) => api.delete(`/user/teams/${teamId}`),
     addFriend: (friendCode) => api.post('/friends/add', { friendCode }),
+    deleteFriend: (friendId) => api.delete(`/friends/${friendId}`),
     getFriends: () => api.get('/friends')
 };
 

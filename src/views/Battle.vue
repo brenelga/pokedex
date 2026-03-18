@@ -10,7 +10,10 @@
         <div class="friends-list">
             <div v-for="friend in friends" :key="friend.id" class="friend-item">
                 <span class="friend-name">{{ friend.name }}</span>
-                <button @click="selectOpponent(friend)" class="challenge-btn">Challenge</button>
+                <div class="friend-actions">
+                    <button @click="selectOpponent(friend)" class="challenge-btn">Challenge</button>
+                    <button @click="removeFriend(friend.id)" class="remove-friend-btn" title="Remove Friend">✕</button>
+                </div>
             </div>
             <p v-if="friends.length === 0">No friends yet.</p>
         </div>
@@ -207,6 +210,16 @@ const addFriend = async () => {
     }
 };
 
+const removeFriend = async (friendId) => {
+    if (!confirm('Are you sure you want to remove this friend?')) return;
+    try {
+        await userApi.deleteFriend(friendId);
+        loadData();
+    } catch (e) {
+        alert(e.response?.data?.error || 'Error removing friend');
+    }
+};
+
 const selectOpponent = (friend) => {
     selectedFriend.value = friend;
     showTeamSelect.value = true;
@@ -376,6 +389,18 @@ onUnmounted(() => {
     align-items: center;
     padding: 10px 0;
     border-bottom: 1px solid #eee;
+}
+.friend-actions {
+    display: flex;
+    gap: 5px;
+}
+.remove-friend-btn {
+    padding: 4px 8px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 .add-friend {
     display: flex;
@@ -621,5 +646,47 @@ onUnmounted(() => {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+}
+
+/* Responsiveness for Mobile */
+@media (max-width: 768px) {
+    .battle-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        height: auto;
+    }
+    .friends-section, .battles-section, .battle-arena {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    .battlefield {
+        min-height: 250px;
+        padding: 10px;
+    }
+    .platform {
+        width: 80px;
+        height: 30px;
+    }
+    .platform img {
+        width: 70px;
+        height: 70px;
+        bottom: 5px;
+    }
+    .pokemon {
+        gap: 10px;
+    }
+    .opponent-pokemon { top: 10px; right: 10px; }
+    .player-pokemon { bottom: 10px; left: 10px; }
+    .stats-box {
+        min-width: 140px;
+        padding: 5px;
+    }
+    .stats-box .name {
+        font-size: 0.9em;
+    }
+    .action-btn {
+        padding: 10px 20px;
+        font-size: 1rem;
+    }
 }
 </style>
