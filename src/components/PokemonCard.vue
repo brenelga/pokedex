@@ -18,7 +18,6 @@
 <script setup>
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { userApi } from '../services/api';
 
 const props = defineProps({
   pokemon: Object,
@@ -47,14 +46,9 @@ const goToDetail = () => {
     router.push(`/pokemon/${pokemonId.value}`);
 };
 
-const toggleFavorite = async () => {
-  try {
+const toggleFavorite = () => {
     const id = Number(pokemonId.value);
-    await userApi.toggleFavorite(id);
     emit('toggle-favorite', id);
-  } catch (e) {
-    console.error('Error toggling favorite', e);
-  }
 };
 </script>
 
