@@ -1,6 +1,7 @@
 const DB_NAME = 'pokedex-offline-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'offline-requests';
+const USER_CACHE_STORE = 'user-cache';
 
 export const openDB = () => {
     return new Promise((resolve, reject) => {
@@ -20,7 +21,38 @@ export const openDB = () => {
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
             }
+            if (!db.objectStoreNames.contains(USER_CACHE_STORE)) {
+                db.createObjectStore(USER_CACHE_STORE, { keyPath: 'key' });
+            }
         };
+    });
+};
+
+export const saveFavorites = async (favorites) => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([USER_CACHE_STORE], 'readwrite');
+        const store = transaction.objectStore(USER_CACHE_STORE);
+        const request = store.put({
+            key: 'favorites',
+            data: favorites,
+            timestamp: Date.now()
+        });
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+};
+
+export const getFavorites = async () => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([USER_CACHE_STORE], 'readonly');
+        const store = transaction.objectStore(USER_CACHE_STORE);
+        const request = store.get('favorites');
+
+        request.onsuccess = () => resolve(request.result ? request.result.data : null);
+        request.onerror = (event) => reject(event.target.error);
     });
 };
 

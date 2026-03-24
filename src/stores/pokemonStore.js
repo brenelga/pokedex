@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { pokeApi, userApi } from '../services/api';
+import { saveFavorites, getFavorites } from '../services/indexedDB';
 
 export const usePokemonStore = defineStore('pokemon', {
     state: () => ({
@@ -149,17 +150,32 @@ export const usePokemonStore = defineStore('pokemon', {
             try {
                 const res = await userApi.getFavorites();
                 this.favorites = res.data;
+                await saveFavorites(this.favorites);
             } catch (e) {
-                console.error(e);
+                console.error('Error fetching favorites, trying offline cache', e);
+                const cached = await getFavorites();
+                if (cached) {
+                    this.favorites = cached;
+                }
             }
         },
 
         async toggleFavorite(pokemonId) {
+            // Optimistic update
+            const isFav = this.favorites.some(f => (f.id || f) === pokemonId);
+            if (isFav) {
+                this.favorites = this.favorites.filter(f => (f.id || f) !== pokemonId);
+            } else {
+                this.favorites.push({ id: pokemonId });
+            }
+            await saveFavorites(this.favorites);
+
             try {
                 const res = await userApi.toggleFavorite(pokemonId);
                 this.favorites = res.data;
+                await saveFavorites(this.favorites);
             } catch (e) {
-                console.error("Error toggling favorite", e);
+                console.error("Error toggling favorite (might be offline)", e);
             }
         }
     }
