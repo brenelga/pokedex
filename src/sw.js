@@ -77,7 +77,8 @@ async function syncOfflineRequests() {
                 const fetchOptions = {
                     method: req.method,
                     headers: req.headers,
-                    body: req.data ? JSON.stringify(req.data) : undefined
+                    // Avoid double-stringifying if Axios already serialized it to a string
+                    body: typeof req.data === 'string' ? req.data : (req.data ? JSON.stringify(req.data) : undefined)
                 }
 
                 // Remove Content-Type if it's already in headers to avoid duplication or boundary issues
