@@ -1,5 +1,5 @@
 const DB_NAME = 'pokedex-offline-db';
-const DB_VERSION = 2;
+const DB_VERSION = 5;
 const STORE_NAME = 'offline-requests';
 const USER_CACHE_STORE = 'user-cache';
 
