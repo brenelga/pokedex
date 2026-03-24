@@ -23,12 +23,13 @@ api.interceptors.response.use(
     async error => {
         if (!error.response && error.message === 'Network Error') {
             const { config } = error;
-            console.log('Network Error detected, saving request to IndexedDB:', config.url);
+            const fullUrl = config.baseURL ? `${config.baseURL.replace(/\/$/, '')}/${config.url.replace(/^\//, '')}` : config.url;
+            console.log('Network Error detected, saving request to IndexedDB:', fullUrl);
 
             try {
                 // Save request to IndexedDB
                 await saveRequest({
-                    url: config.url,
+                    url: fullUrl,
                     method: config.method,
                     headers: config.headers,
                     data: config.data
