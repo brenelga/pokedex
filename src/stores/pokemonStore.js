@@ -150,7 +150,8 @@ export const usePokemonStore = defineStore('pokemon', {
             try {
                 const res = await userApi.getFavorites();
                 this.favorites = res.data;
-                await saveFavorites(this.favorites);
+                // Unwrap Vue proxy to plain array before saving to IndexedDB to avoid DataCloneError
+                await saveFavorites(JSON.parse(JSON.stringify(this.favorites)));
             } catch (e) {
                 console.error('Error fetching favorites, trying offline cache', e);
                 const cached = await getFavorites();
@@ -168,12 +169,13 @@ export const usePokemonStore = defineStore('pokemon', {
             } else {
                 this.favorites.push({ id: pokemonId });
             }
-            await saveFavorites(this.favorites);
+            // Unwrap before saving
+            await saveFavorites(JSON.parse(JSON.stringify(this.favorites)));
 
             try {
                 const res = await userApi.toggleFavorite(pokemonId);
                 this.favorites = res.data;
-                await saveFavorites(this.favorites);
+                await saveFavorites(JSON.parse(JSON.stringify(this.favorites)));
             } catch (e) {
                 console.error("Error toggling favorite (might be offline)", e);
             }
